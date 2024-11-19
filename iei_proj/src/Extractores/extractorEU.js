@@ -1,66 +1,59 @@
-const fs = require('fs').promises
 const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
 
+// Función para consumir la API y guardar los datos en la base de datos
+const extraerDatos = async () => {
+    (async () => {
+        const fetch = (await import('node-fetch')).default //Usamos una importación dinámica para este módulo porque es un modulo ESM y el proyecto usa CommonJS, así 
+                                                           //lo podemos importar y no se queja.
 
-async function euskadi(){
     try {
-        // Leer archivo JSON
-        const data = await fs.readFile('C:\\Users\\Óscar\\Desktop\\Clase\\edificios.json', 'utf-8');
+        // Consumir la API
+        const response = await fetch('http://localhost:3000/EuskadiAPI');
+        const data = await response.json();
         
-        // Parsear el contenido como JSON
-        const jsonData = JSON.parse(data);
-
-        const primerosCuatro = jsonData.slice(0, 4);
+        const primerosCuatro = data.slice(0, 4);
 
         // Iterar sobre los monumentos y esperar a que se complete cada operación
-        for (const monumento of jsonData) {
-            //console.log(monumento)
+        console.time('Tiempo de ejecución');
+        for (const monumento of data) {
             await guardarEnBD(monumento);
         }
+        console.timeEnd('Tiempo de ejecución');
 
-        console.log('Todos los monumentos han sido procesados.');
-    } catch (err) {
-        console.error('Error:', err);
-    }
-}
+        console.log('Datos guardados exitosamente en la base de datos.');
+    } catch (error) {
+        console.error('Error extrayendo y guardando datos:', error);
+    } 
+
+    })(); //Aquí temina la importación dinámica
+};
 
 async function guardarEnBD(monumento) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-    
+
         //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
-        const { data, error: error1} = await supabase
+        const { data: provincia, error: error1} = await supabase
                 .from('Provincia')
                 .insert([
                 { nombre: monumento.territory},
                 ])
                  .select()
         if(error1){
-            console.error('Error:',error1);
+            //console.error('Error guardando la procvincia:',error1);
         }
-
-        //Recuperar el id de la provincia donde se encuentra el monumento
-        const{data: provincia, error: error2} = await supabase
-            .from('Provincia')
-            .select('código')
-            .eq('nombre', monumento.territory)
-        if(error2){
-            console.error('Error:',error2);
-        }
-        //console.log(provincia[0].código)
-
-        //Guardar el municipio donde se encuentra el monumento (si aún no está guardado)
-        const{data: local, error: error3} = await supabase  
+        
+        //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
+        const{data: local, error: error2} = await supabase  
             .from('Localidad')
             .insert([
-                { nombre: monumento.municipality, en_provincia: provincia[0].código },
+                { nombre: monumento.municipality, en_provincia: monumento.territory },
               ])
               .select()
-        //console.log(local)
-        if(error3){
-            console.error('Error:',error3);
+        if(error2){
+            //console.error('Error guardando el municipio:',error2);
         }
 
 }
 
-euskadi();
+extraerDatos();
