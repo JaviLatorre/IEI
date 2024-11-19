@@ -36,7 +36,7 @@ async function guardarEnBD(monumento) {
                 ])
                  .select()
         if(error1){
-            console.error('Error:',error2);
+            console.error('Error:',error1);
         }
 
         //Recuperar el id de la provincia donde se encuentra el monumento
