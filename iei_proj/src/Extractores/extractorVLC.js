@@ -2,6 +2,10 @@ const fs = require('fs');  // Importamos el módulo 'fs' para trabajar con archi
 const path = require('path');  // Importamos el módulo 'path' para manejar rutas de archivos
 const csv = require('csv-parser');  // Importamos el módulo 'csv-parser' para leer archivos CSV
 
+const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
+const { createClient, SupabaseClient } = require('@supabase/supabase-js');
+
+
 function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que convertirá el CSV a JSON
   const results = [];  // Creamos un array vacío donde almacenaremos los resultados (cada fila del CSV)
 
@@ -25,7 +29,7 @@ function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que c
       
       // Escribimos el contenido de 'results' (el array con las filas del CSV convertidas a JSON) en un archivo JSON
       fs.writeFileSync(outputFilePath, JSON.stringify(results, null, 2), 'utf-8');  // Usamos 'JSON.stringify' para convertir el array a JSON
-      console.log(`Archivo JSON guardado en: ${outputFilePath}`);  // Imprimimos un mensaje indicando dónde se guardó el archivo JSON
+      //console.log(Archivo JSON guardado en: ${outputFilePath});  // Imprimimos un mensaje indicando dónde se guardó el archivo JSON
     });
 }
 
@@ -33,11 +37,12 @@ function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que c
 const csvFilePath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural.csv');
 const outputFolder = path.join(__dirname, '../FuentesDeDatos');
 csvToJson(csvFilePath, outputFolder);  // Llamamos a la función para convertir el CSV a JSON
+module.exports = { csvToJson };  // Exportamos la función en caso de que la necesitemos en otro archivo
 
 async function valencia(){
   try {
     // Leer archivo JSON
-    const data = await fs.readFile(csvToJson(), 'utf8');
+    const data = await fs.readFile('iei_proj\src\FuentesDeDatos\bienes_inmuebles_interes_cultural.json', 'utf8');
 
     // Parsear el contenido como JSON
     const jsonData = JSON.parse(data);
@@ -57,7 +62,7 @@ async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
       //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
-      const { data: provincia, error: error1} = await supabase
+      const { error: error1} = await supabase
               .from('Provincia')
               .insert([
               { nombre: monumento.provincia},
@@ -68,7 +73,7 @@ async function guardarEnBD(monumento) {
       }
       
       //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
-      const{data: local, error: error2} = await supabase  
+      const{ error: error2} = await supabase  
           .from('Localidad')
           .insert([
               { nombre: monumento.municipo, en_provincia: monumento.en_provincia },
@@ -78,7 +83,38 @@ async function guardarEnBD(monumento) {
           //console.error('Error guardando el municipio:',error2);
       }
 
+      //Insertar Monumento 
+      const{ error: error3} = await supabase  
+          .from('Monumento')
+          .insert([
+              { nombre: monumento.denominacion,
+                tipo: determinarTipo(monumento.denominacion),
+                direccion : 'Valor obtenido a partir de una web externa de geolocalización',
+                descripcion : 'Monumento en la localidad de MUNICIPIO', 
+                latitud: 'latitud' ,
+                longitud: 'longitud',
+                codigo_postal: ' Una vez tengamos la longitud y la latitud, usaremos una web externa de geolocalización a la que pasaremos las coordendas y obtendremos su código postal',  
+                en_localidad: monumento.municipo,
+              },
+            ])
+            .select()
+      if(error3){
+          //console.error('Error guardando el municipio:',error2);
+      }
+
 }
 
-module.exports = { csvToJson };  // Exportamos la función en caso de que la necesitemos en otro archivo
+function determinarTipo(denominacion){
+ const lowername = denominacion.toLowerCase();
 
+ if(lowername.includes('yacimiento')) return 'yacimiento arqueológico';
+ if(lowername.includes('iglesia') || lowername.includes('ermita')) return 'Iglesia-Ermita';
+ if(lowername.includes('monasterio') || lowername.includes('convento')) return 'Monasterio-Convento';
+ if(lowername.includes('castillo') || lowername.includes('fortaleza') || lowername.includes('torre')) return 'Castillo-Fortaleza-Torre';
+ if(lowername.includes('palacio') || lowername.includes('casa') || lowername.includes('teatro')  || lowername.includes('ayuntamiento')) return 'Iglesia-Ermita';
+ if(lowername.includes('puente') ) return 'Puente';
+ return 'otros';
+}
+
+
+valencia();

@@ -1,3 +1,6 @@
+const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
+const { createClient, SupabaseClient } = require('@supabase/supabase-js');
+
 const fs = require('fs');  // Importamos el módulo 'fs' para poder trabajar con archivos (leer y escribir)
 const path = require('path');  // Importamos el módulo 'path' para trabajar con rutas de archivos de forma flexible
 const xml2js = require('xml2js');  // Importamos el módulo 'xml2js' para convertir archivos XML a JSON
@@ -36,6 +39,25 @@ function xmlToJson(xmlFilePath, outputFolder) {  // Definimos la función que co
 const xmlFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.xml');  // Especificamos la ruta del archivo XML
 const outputFolder = path.join(__dirname, '../FuentesDeDatos');  // Especificamos la carpeta donde se guardará el archivo JSON
 xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la conversión
+
+async function castillayleon(){
+  try {
+    // Leer archivo JSON
+    const data = await fs.readFile('C:\Users\javier\IEI\iei_proj\src\FuentesDeDatos\monumentos.json',utf8);
+
+    // Parsear el contenido como JSON
+    const jsonData = JSON.parse(data);
+
+    // Iterar sobre los monumentos y esperar que se complete cada operación
+    for (const monumento of jsonData){
+      await guardarEnBD(monumento);
+    }
+
+    console.log('Todos los monumentos han sido procesados.');
+  } catch (err) {
+    console.error('Error: ', err);
+  }
+}
 
 
 
