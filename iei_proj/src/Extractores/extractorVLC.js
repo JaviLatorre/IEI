@@ -37,7 +37,7 @@ csvToJson(csvFilePath, outputFolder);  // Llamamos a la función para convertir 
 async function valencia(){
   try {
     // Leer archivo JSON
-    const data = await fs.readFile(xmlToJson(), 'utf8');
+    const data = await fs.readFile(csvToJson(), 'utf8');
 
     // Parsear el contenido como JSON
     const jsonData = JSON.parse(data);
