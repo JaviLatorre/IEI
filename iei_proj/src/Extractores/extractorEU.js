@@ -2,7 +2,7 @@ const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
 
 // Función para consumir la API y guardar los datos en la base de datos
-const extraerDatos = async () => {
+/*const extraerDatos = async () => {
     (async () => {
         const fetch = (await import('node-fetch')).default //Usamos una importación dinámica para este módulo porque es un modulo ESM y el proyecto usa CommonJS, así 
                                                            //lo podemos importar y no se queja.
@@ -27,7 +27,29 @@ const extraerDatos = async () => {
     } 
 
     })(); //Aquí temina la importación dinámica
-};
+};*/
+
+async function euskadi(){
+    try {
+        // Leer archivo JSON
+        const data = await fs.readFile('C:\\Users\\Óscar\\Desktop\\Clase\\edificios.json', 'utf-8');
+        
+        // Parsear el contenido como JSON
+        const jsonData = JSON.parse(data);
+
+        const primerosCuatro = jsonData.slice(0, 4);
+
+        // Iterar sobre los monumentos y esperar a que se complete cada operación
+        for (const monumento of jsonData) {
+            //console.log(monumento)
+            await guardarEnBD(monumento);
+        }
+
+        console.log('Todos los monumentos han sido procesados.');
+    } catch (err) {
+        console.error('Error:', err);
+    }
+}
 
 async function guardarEnBD(monumento) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -56,4 +78,4 @@ async function guardarEnBD(monumento) {
 
 }
 
-extraerDatos();
+euskadi();
