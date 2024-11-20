@@ -34,5 +34,51 @@ const csvFilePath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_
 const outputFolder = path.join(__dirname, '../FuentesDeDatos');
 csvToJson(csvFilePath, outputFolder);  // Llamamos a la función para convertir el CSV a JSON
 
+async function valencia(){
+  try {
+    // Leer archivo JSON
+    const data = await fs.readFile(xmlToJson(), 'utf8');
+
+    // Parsear el contenido como JSON
+    const jsonData = JSON.parse(data);
+
+    // Iterar sobre los monumentos y esperar que se complete cada operación
+    for (const monumento of jsonData){
+      await guardarEnBD(monumento);
+    }
+
+    console.log('Todos los monumentos han sido procesados.');
+  } catch (err) {
+    console.error('Error: ', err);
+  }
+}
+
+async function guardarEnBD(monumento) {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
+      const { data: provincia, error: error1} = await supabase
+              .from('Provincia')
+              .insert([
+              { nombre: monumento.provincia},
+              ])
+               .select()
+      if(error1){
+          //console.error('Error guardando la procvincia:',error1);
+      }
+      
+      //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
+      const{data: local, error: error2} = await supabase  
+          .from('Localidad')
+          .insert([
+              { nombre: monumento.municipo, en_provincia: monumento.en_provincia },
+            ])
+            .select()
+      if(error2){
+          //console.error('Error guardando el municipio:',error2);
+      }
+
+}
+
 module.exports = { csvToJson };  // Exportamos la función en caso de que la necesitemos en otro archivo
 
