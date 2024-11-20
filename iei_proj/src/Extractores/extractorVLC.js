@@ -1,86 +1,38 @@
-const fs = require('fs');  // Importamos el módulo 'fs' para poder trabajar con archivos (leer y escribir)
-const path = require('path');  // Importamos el módulo 'path' para trabajar con rutas de archivos de forma flexible
-const xml2js = require('xml2js');  // Importamos el módulo 'xml2js' para convertir archivos XML a JSON
+const fs = require('fs');  // Importamos el módulo 'fs' para trabajar con archivos
+const path = require('path');  // Importamos el módulo 'path' para manejar rutas de archivos
+const csv = require('csv-parser');  // Importamos el módulo 'csv-parser' para leer archivos CSV
 
-function xmlToJson(xmlFilePath, outputFolder) {  // Definimos la función que convierte XML a JSON
-  const parser = new xml2js.Parser({ explicitArray: false, mergeAttrs: true });  // Creamos un parser que nos ayudará a convertir el XML a JSON
+function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que convertirá el CSV a JSON
+  const results = [];  // Creamos un array vacío donde almacenaremos los resultados (cada fila del CSV)
 
-  // Leemos el archivo XML especificado en la ruta 'xmlFilePath' (que está en formato texto)
-  fs.readFile(xmlFilePath, 'utf-8', (err, data) => {
-    if (err) {  // Si ocurre un error al leer el archivo
-      console.error(`Error al leer el archivo XML: ${err}`);  // Mostramos el error en consola
-      return;  // Terminamos la función si hay error
-    }
-
-    // Parseamos el contenido del archivo XML a un objeto JSON
-    parser.parseString(data, (err, result) => {  // 'result' es el objeto JSON resultante del parseo
-      if (err) {  // Si ocurre un error al parsear el XML
-        console.error(`Error al parsear el XML: ${err}`);  // Mostramos el error en consola
-        return;  // Terminamos la función si hay error
+  // Abrimos el archivo CSV y le indicamos que el delimitador es el punto y coma (';')
+  fs.createReadStream(csvFilePath)
+    .pipe(csv({ separator: ';' }))  // Usamos el separador adecuado para que el parser entienda las columnas
+    .on('data', (data) => {  // Cada vez que leemos una nueva fila (un objeto con los datos de la fila)
+      // Limpiar las comillas innecesarias en los valores de cada columna
+      for (const key in data) {  // Recorremos cada clave de la fila
+        if (data.hasOwnProperty(key)) {  // Verificamos que la clave es propia del objeto
+          data[key] = data[key].replace(/"/g, '').trim();  // Quitamos las comillas dobles y los espacios extra
+        }
       }
-
-      // Aquí podemos modificar la estructura si lo necesitamos, pero por ahora no cambiamos el contenido del JSON.
-
-      // Generamos el nombre del archivo JSON basado en el nombre del archivo XML
-      const jsonFileName = path.basename(xmlFilePath, path.extname(xmlFilePath)) + '.json';  // Obtenemos el nombre del archivo XML y lo cambiamos a '.json'
-      const outputFilePath = path.join(outputFolder, jsonFileName);  // Creamos la ruta completa del archivo JSON usando la carpeta de salida
-
-      // Escribimos el JSON resultante en el archivo generado con formato legible (2 espacios de indentación)
-      fs.writeFileSync(outputFilePath, JSON.stringify(result, null, 2), 'utf-8');  // Usamos 'JSON.stringify' para convertir el objeto JSON a texto
-      console.log(`Archivo JSON guardado en: ${outputFilePath}`);  // Mostramos un mensaje indicando que el archivo se guardó correctamente
-    });
-  });
-}
-
-// Si este archivo se ejecuta directamente, convertimos el archivo XML especificado a JSON
-const xmlFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.xml');  // Especificamos la ruta del archivo XML
-const outputFolder = path.join(__dirname, '../FuentesDeDatos');  // Especificamos la carpeta donde se guardará el archivo JSON
-xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la conversión
-
-async function valencia(){
-  try {
-    // Leer archivo JSON
-    const data = await fs.readFile(xmlToJson(), 'utf8');
-
-    // Parsear el contenido como JSON
-    const jsonData = JSON.parse(data);
-
-    // Iterar sobre los monumentos y esperar que se complete cada operación
-    for (const monumento of jsonData){
-      await guardarEnBD(monumento);
-    }
-
-    console.log('Todos los monumentos han sido procesados.');
-  } catch (err) {
-    console.error('Error: ', err);
-  }
-}
-
-async function guardarEnBD(monumento) {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-      //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
-      const { data: provincia, error: error1} = await supabase
-              .from('Provincia')
-              .insert([
-              { nombre: monumento.provincia},
-              ])
-               .select()
-      if(error1){
-          //console.error('Error guardando la procvincia:',error1);
-      }
+      results.push(data);  // Añadimos la fila limpia al array de resultados
+    })
+    .on('end', () => {  // Cuando termine de leer todo el archivo CSV
+      // Generamos el nombre del archivo JSON de salida, tomando el nombre del CSV y cambiando la extensión a '.json'
+      const jsonFileName = path.basename(csvFilePath, path.extname(csvFilePath)) + '.json';
+      // Creamos la ruta completa para el archivo de salida, usando la carpeta de salida y el nombre del archivo JSON
+      const outputFilePath = path.join(outputFolder, jsonFileName);
       
-      //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
-      const{data: local, error: error2} = await supabase  
-          .from('Localidad')
-          .insert([
-              { nombre: monumento.municipo, en_provincia: monumento.en_provincia },
-            ])
-            .select()
-      if(error2){
-          //console.error('Error guardando el municipio:',error2);
-      }
-
+      // Escribimos el contenido de 'results' (el array con las filas del CSV convertidas a JSON) en un archivo JSON
+      fs.writeFileSync(outputFilePath, JSON.stringify(results, null, 2), 'utf-8');  // Usamos 'JSON.stringify' para convertir el array a JSON
+      console.log(`Archivo JSON guardado en: ${outputFilePath}`);  // Imprimimos un mensaje indicando dónde se guardó el archivo JSON
+    });
 }
 
-module.exports = { xmlToJson };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
+// Ejecutamos la conversión si el archivo se ejecuta directamente, especificando la ruta del CSV y la carpeta de salida
+const csvFilePath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural.csv');
+const outputFolder = path.join(__dirname, '../FuentesDeDatos');
+csvToJson(csvFilePath, outputFolder);  // Llamamos a la función para convertir el CSV a JSON
+
+module.exports = { csvToJson };  // Exportamos la función en caso de que la necesitemos en otro archivo
+
