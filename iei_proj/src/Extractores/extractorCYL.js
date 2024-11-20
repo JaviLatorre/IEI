@@ -59,6 +59,62 @@ async function castillayleon(){
   }
 }
 
+async function guardarEnBD(monumento) {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+      //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
+      const { error: error1} = await supabase
+              .from('Provincia')
+              .insert([
+              { nombre: monumento.provincia},
+              ])
+               .select()
+      if(error1){
+          //console.error('Error guardando la procvincia:',error1);
+      }
+      
+      //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
+      const{ error: error2} = await supabase  
+          .from('Localidad')
+          .insert([
+              { nombre: monumento.municipo, en_provincia: monumento.en_provincia },
+            ])
+            .select()
+      if(error2){
+          //console.error('Error guardando el municipio:',error2);
+      }
+
+      //Insertar Monumento 
+      const{ error: error3} = await supabase  
+          .from('Monumento')
+          .insert([
+              { nombre: monumento.denominacion,
+                tipo: determinarTipo(monumento.denominacion),
+                direccion : monumento.direccion,
+                descripcion : monumento.descripcion, 
+                latitud: monumento.latitud ,
+                longitud: monumento.longitud,
+                codigo_postal: monumento.codigo_postal,  //falta hacer verificación 5 dígitos y que sea válido
+                en_localidad: monumento.municipo,
+              },
+            ])
+            .select()
+      if(error3){
+          //console.error('Error guardando el municipio:',error2);
+      }
+
+}
+
+function determinarTipo(denominacion){
+ const lowername = denominacion.toLowerCase();
+
+ if(lowername.includes('yacimiento')) return 'yacimiento arqueológico';
+ if(lowername.includes('iglesia') || lowername.includes('ermita') || lowername.includes('catedral') || lowername.includes('sinagoga')) return 'Iglesia-Ermita';
+ if(lowername.includes('monasterio') || lowername.includes('convento') || lowername.includes('santuario')) return 'Monasterio-Convento';
+ if(lowername.includes('castillo') || lowername.includes('palacio') || lowername.includes('torre') || lowername.includes('muralla') || lowername.includes('puerta')) return 'Castillo-Fortaleza-Torre';
+ if(lowername.includes('casa consistorial') || lowername.includes('casa noble') || lowername.includes('real sitio')  || lowername.includes('sitio histórico')) return 'Iglesia-Ermita';
+ if(lowername.includes('puente') ) return 'Puente';
+ return 'otros';
+}
 
 module.exports = { xmlToJson };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
