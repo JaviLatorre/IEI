@@ -1,6 +1,9 @@
-const fs = require('fs');  // Importamos el módulo 'fs' para trabajar con archivos
-const path = require('path');  // Importamos el módulo 'path' para manejar rutas de archivos
-const csv = require('csv-parser');  // Importamos el módulo 'csv-parser' para leer archivos CSV
+const fs = require('fs');  
+const path = require('path');  
+
+const {Builder , By} = require('selenium-webdriver');
+
+const csv = require('csv-parser');  
 
 const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
@@ -37,12 +40,13 @@ function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que c
 const csvFilePath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural.csv');
 const outputFolder = path.join(__dirname, '../FuentesDeDatos');
 csvToJson(csvFilePath, outputFolder);  // Llamamos a la función para convertir el CSV a JSON
-module.exports = { csvToJson };  // Exportamos la función en caso de que la necesitemos en otro archivo
+//module.exports = { csvToJson };  // Exportamos la función en caso de que la necesitemos en otro archivo
 
 async function valencia(){
   try {
     // Leer archivo JSON
-    const data = await fs.readFile('iei_proj\src\FuentesDeDatos\bienes_inmuebles_interes_cultural.json', 'utf8');
+    const filepath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural.json');
+    const data = await fs.readFile(filepath, 'utf8');
 
     // Parsear el contenido como JSON
     const jsonData = JSON.parse(data);
@@ -54,13 +58,18 @@ async function valencia(){
 
     console.log('Todos los monumentos han sido procesados.');
   } catch (err) {
-    console.error('Error: ', err);
+    console.error('Error procesando los monumentos: ', err);
   }
 }
 
 async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    try{
+
+      const {latitud, longitud} = await obtenerCoordenadas(monumento);
+
+      const codigoPostal = latitud && longitud ? await await obtenerCodigoPostal(latitud, longitud) : 'Código postal no disponible';
       //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
       const { error: error1} = await supabase
               .from('Provincia')
@@ -69,7 +78,7 @@ async function guardarEnBD(monumento) {
               ])
                .select()
       if(error1){
-          //console.error('Error guardando la procvincia:',error1);
+        console.error('Error guardando la procvincia:',error1);
       }
       
       //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
@@ -80,7 +89,7 @@ async function guardarEnBD(monumento) {
             ])
             .select()
       if(error2){
-          //console.error('Error guardando el municipio:',error2);
+          console.error('Error guardando la localidad:',error2);
       }
 
       //Insertar Monumento 
@@ -89,22 +98,27 @@ async function guardarEnBD(monumento) {
           .insert([
               { nombre: monumento.denominacion,
                 tipo: determinarTipo(monumento.denominacion),
-                direccion : 'Valor obtenido a partir de una web externa de geolocalización',
-                descripcion : 'Monumento en la localidad de MUNICIPIO', 
-                latitud: 'latitud' ,
-                longitud: 'longitud',
-                codigo_postal: ' Una vez tengamos la longitud y la latitud, usaremos una web externa de geolocalización a la que pasaremos las coordendas y obtendremos su código postal',  
+                direccion : direccion || 'Dirección no disponible',
+                descripcion : 'Monumento en la localidad de ${monumento.municipio}', 
+                latitud: parseFloat(monumento.UTMNORTE)|| null ,
+                longitud: parseFloat(monumento.UTMESTE) || null,
+                codigo_postal: codigoPostal,  
                 en_localidad: monumento.municipo,
               },
             ])
             .select()
       if(error3){
-          //console.error('Error guardando el municipio:',error2);
+          console.error('Error guardando el municipio:',error3);
       }
+
+    }catch(err){
+        console.error('Error guardando en BD', err);
+
+    }
 
 }
 
-function determinarTipo(denominacion){
+ function determinarTipo(denominacion){
  const lowername = denominacion.toLowerCase();
 
  if(lowername.includes('yacimiento')) return 'yacimiento arqueológico';
@@ -115,6 +129,83 @@ function determinarTipo(denominacion){
  if(lowername.includes('puente') ) return 'Puente';
  return 'otros';
 }
+
+// Función para obtener la dirección con Selenium
+async function  obtenerCoordenadas(monumento) {
+  let driver;
+  try{
+    driver = await new Builder().forBrowser('chrome').build();
+
+    //para acceder a la página web 
+    await driver.get('https://www.latlong.net/'); 
+    
+    const searchBox = await driver.findElement(By.id('place'));
+    await searchBox.sendKeys(monumento.denominacion);
+
+    const searchButton = await driver.findElement(By.xpath("//button[@type='button' and contains(text(), 'Find')]"));
+    await searchButton.click();
+
+    await driver.sleep(3000);
+
+    const latitud = await driver.findElement(By.xpath("//input[@id='lat']")).getAttribute('value');
+    const longitud = await driver.findElement(By.xpath("//input[@id='lng']")).getAttribute('value');
+
+    return{
+        latitud: parseFloat(latitud),
+        longitud: parseFloat(longitud),
+
+
+    };
+
+  }catch(err){
+
+    console.error('Error obteniendo coordenadas', err);
+    return {latitud: null, longitud: null}; 
+  }finally{
+    if( driver) await driver.quit();
+
+  }
+
+
+  
+}
+
+async function obtenerCodigoPostal(latitud, longitud){
+ let driver; 
+ try{
+    driver = await new Builder().forBrowser('chrome').build();
+
+    await driver.get('https://www.gps-coordinates.net/');
+
+    const latInput = await driver.findElement(By.id('latitude'));
+    const lngInput = await driver.findElement(By.id('longitude'));
+
+    await latInput.sendKeys(latitud.toString());
+    await lngInput.sendKeys(longitud.toString());
+
+    const searchButton = await driver.findElement(By.xpath("//button[contains(text(), 'Get Address')]"));
+    await searchButton.click();
+
+   
+    await driver.sleep(3000);
+
+    
+    const postalCodeElement = await driver.findElement(By.xpath("//span[@id='postal']"));
+    const codigoPostal = await postalCodeElement.getText();
+
+    return codigoPostal || 'Código postal no disponible';
+
+ }catch(err){
+      console.log('Error obteniendo el código postal:',err);
+      return 'Código postal no disponible';
+ }finally{
+      if(driver) await driver.quit();
+
+ }
+
+
+}
+
 
 
 valencia();

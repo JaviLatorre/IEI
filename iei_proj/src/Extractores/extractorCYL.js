@@ -118,3 +118,4 @@ function determinarTipo(denominacion){
 }
 
 module.exports = { xmlToJson };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
+castillayleon();
