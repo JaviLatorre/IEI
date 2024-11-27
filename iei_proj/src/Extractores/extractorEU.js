@@ -1,5 +1,14 @@
 const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
+const fs = require('fs').promises;
+
+
+let insertadas_correctamente = 0;
+let insertadas_corregidas = 0;
+let descartadas = 0;
+let modificado = false;
+
+let provincia = "";
 
 // Función para consumir la API y guardar los datos en la base de datos
 /*const extraerDatos = async () => {
@@ -32,7 +41,7 @@ const { createClient, SupabaseClient } = require('@supabase/supabase-js');
 async function euskadi(){
     try {
         // Leer archivo JSON
-        const data = await fs.readFile('C:\\Users\\Óscar\\Desktop\\Clase\\edificios.json', 'utf-8');
+        const data = await fs.readFile('../FuentesDeDatos/edificios.json', 'utf-8');
         
         // Parsear el contenido como JSON
         const jsonData = JSON.parse(data);
@@ -40,12 +49,17 @@ async function euskadi(){
         const primerosCuatro = jsonData.slice(0, 4);
 
         // Iterar sobre los monumentos y esperar a que se complete cada operación
+        console.time('Tiempo de ejecución');
         for (const monumento of jsonData) {
             //console.log(monumento)
             await guardarEnBD(monumento);
         }
+        console.timeEnd('Tiempo de ejecución');
 
         console.log('Todos los monumentos han sido procesados.');
+        console.log('Monumentos insetados correctamente: ', insertadas_correctamente)
+        console.log('Monumentos corregidos: ', insertadas_corregidas)
+        console.log('Monumentos descartados: ', descartadas)
     } catch (err) {
         console.error('Error:', err);
     }
@@ -53,12 +67,28 @@ async function euskadi(){
 
 async function guardarEnBD(monumento) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        modificado = false
+        provincia = monumento.territory
+        municipio = monumento.municipality
+        let correcto = await verificarProvincia()
+        if(!correcto){
+            return
+        }
 
+        correcto = await verificarMunicipio()
+        if(!correcto){
+            return
+        }
+
+        if(modificado){
+            insertadas_corregidas++
+        }else{insertadas_correctamente++}
+        console.log(municipio)
         //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
-        const { data: provincia, error: error1} = await supabase
+        /*const { data: provin, error: error1} = await supabase
                 .from('Provincia')
                 .insert([
-                { nombre: monumento.territory},
+                { nombre: provincia},
                 ])
                  .select()
         if(error1){
@@ -69,13 +99,44 @@ async function guardarEnBD(monumento) {
         const{data: local, error: error2} = await supabase  
             .from('Localidad')
             .insert([
-                { nombre: monumento.municipality, en_provincia: monumento.territory },
+                { nombre: monumento.municipality, en_provincia: provincia },
               ])
               .select()
         if(error2){
             //console.error('Error guardando el municipio:',error2);
-        }
+        }*/
 
+}
+
+async function verificarProvincia(){
+    if(provincia == ""){
+        descartadas++
+        return false
+    }
+    else if(provincia == "Araba/Álava"){
+        provincia = "Araba"
+        modificado = true
+        return true
+    }
+    else if (provincia!= "Gipuzkoa" && provincia != "Bizkaia"){
+        descartadas++
+        return false
+    }
+    return true
+}
+
+async function verificarMunicipio(){
+    if(municipio == ""){
+        descartadas++
+        return false
+    }
+    else if(municipio.includes('/')){
+        const textoAntes = municipio.split('/')[0];
+        municipio = textoAntes
+        modificado = true
+        return true
+    }
+    return true
 }
 
 euskadi();
