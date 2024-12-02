@@ -70,6 +70,8 @@ async function guardarEnBD(monumento) {
         modificado = false
         provincia = monumento.territory
         municipio = monumento.municipality
+        codigoPostal = monumento.postalCode
+
         let correcto = await verificarProvincia()
         if(!correcto){
             return
@@ -80,6 +82,11 @@ async function guardarEnBD(monumento) {
             return
         }
 
+        correcto = await verificarCodigoPostal()
+        if(!correcto){
+            return
+        }
+        
         if(modificado){
             insertadas_corregidas++
         }else{insertadas_correctamente++}
@@ -138,5 +145,14 @@ async function verificarMunicipio(){
     }
     return true
 }
+
+async function verificarCodigoPostal() {
+    // Comprueba que todos los códigos postales tengan 5 dígitos
+    if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
+      descartadas++
+      return false
+    }
+    return true;
+  }
 
 euskadi();

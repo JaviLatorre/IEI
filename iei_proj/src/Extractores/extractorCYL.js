@@ -61,48 +61,51 @@ async function castillayleon(){
 
 async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
+  try {
       //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
       const { error: error1} = await supabase
-              .from('Provincia')
-              .insert([
-              { nombre: monumento.provincia},
-              ])
-               .select()
+          .from('Provincia')
+          .insert([
+          { nombre: monumento.provincia},
+          ])
+          .select()
       if(error1){
-          //console.error('Error guardando la procvincia:',error1);
+        console.error('Error guardando la procvincia:', error1);
       }
-      
+
       //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
       const{ error: error2} = await supabase  
-          .from('Localidad')
-          .insert([
-              { nombre: monumento.municipo, en_provincia: monumento.en_provincia },
-            ])
-            .select()
+        .from('Localidad')
+        .insert([
+            { nombre: monumento.municipo, en_provincia: monumento.en_provincia },
+          ])
+          .select()
       if(error2){
-          //console.error('Error guardando el municipio:',error2);
+        console.error('Error guardando el municipio:', error2);
       }
 
       //Insertar Monumento 
       const{ error: error3} = await supabase  
-          .from('Monumento')
-          .insert([
-              { nombre: monumento.denominacion,
-                tipo: determinarTipo(monumento.denominacion),
-                direccion : monumento.direccion,
-                descripcion : monumento.descripcion, 
-                latitud: monumento.latitud ,
-                longitud: monumento.longitud,
-                codigo_postal: monumento.codigo_postal,  //falta hacer verificación 5 dígitos y que sea válido
-                en_localidad: monumento.municipo,
-              },
-            ])
-            .select()
-      if(error3){
-          //console.error('Error guardando el municipio:',error2);
+        .from('Monumento')
+        .insert([
+            { nombre: monumento.denominacion,
+              tipo: determinarTipo(monumento.denominacion),
+              direccion : monumento.direccion,
+              descripcion : monumento.descripcion, 
+              latitud: monumento.latitud,
+              longitud: monumento.longitud,
+              codigo_postal: validarCodigoPostal(monumento.codigo_postal, monumento.provincia),
+              en_localidad: monumento.municipo,
+            },
+          ])
+          .select()
+        if(error3){
+          console.error('Error guardando el municipio:', error3);
+        }
+      } catch(err){
+        console.error('Error guardando en BD', err)
       }
-
+      
 }
 
 function determinarTipo(denominacion){
@@ -115,6 +118,31 @@ function determinarTipo(denominacion){
  if(lowername.includes('casa consistorial') || lowername.includes('casa noble') || lowername.includes('real sitio')  || lowername.includes('sitio histórico')) return 'Iglesia-Ermita';
  if(lowername.includes('puente') ) return 'Puente';
  return 'otros';
+}
+
+function validarCodigoPostal(codigoPostal, provincia) {
+  // Verifica si el código postal es nulo o indefinido
+  if (!codigoPostal) {
+    console.error("Error: Código postal no disponible.");
+    return null;
+  }
+
+  // Elimina espacios extra por si acaso
+  codigoPostal = codigoPostal.toString().trim();
+
+  // Si la provincia es Ávila o Burgos y el código postal tiene 4 dígitos, añade un 0 al inicio
+  if (provincia.toUpperCase() === "AVILA" || provincia.toUpperCase() === "BURGOS" && codigoPostal.length === 4) {
+    return "0" + codigoPostal;
+  }
+
+  // Comprueba que todos los códigos postales tengan 5 dígitos
+  if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
+    console.error('Error: El código postal ${codigoPostal}" es incorrecto para la provincia "${provincia}.');
+    return null;
+  }
+
+  // Devuelve el código postal válido
+  return codigoPostal;
 }
 
 module.exports = { xmlToJson };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario

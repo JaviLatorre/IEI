@@ -69,7 +69,11 @@ async function guardarEnBD(monumento) {
 
       const {latitud, longitud} = await obtenerCoordenadas(monumento);
 
-      const codigoPostal = latitud && longitud ? await await obtenerCodigoPostal(latitud, longitud) : 'Código postal no disponible';
+      //Saca el código postal según las coordenadas y lo verifica
+      let codigoPostal = latitud && longitud ? await await obtenerCodigoPostal(latitud, longitud) : 'Código postal no disponible';
+
+      codigoPostal = validarCodigoPostal(codigoPostal, monumento.provincia);
+
       //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
       const { error: error1} = await supabase
               .from('Provincia')
@@ -206,6 +210,30 @@ async function obtenerCodigoPostal(latitud, longitud){
 
 }
 
+function validarCodigoPostal(codigoPostal, provincia) {
+  // Verifica si el código postal es nulo o indefinido
+  if (!codigoPostal) {
+    console.error("Error: Código postal no disponible.");
+    return null;
+  }
+
+  // Elimina espacios extra por si acaso
+  codigoPostal = codigoPostal.toString().trim();
+
+  // Si la provincia es Alicante y el código postal tiene 4 dígitos, añade un 0 al inicio
+  if (provincia.toUpperCase() === "ALICANTE" && codigoPostal.length === 4) {
+    return "0" + codigoPostal;
+  }
+
+  // Comprueba que todos los códigos postales tengan 5 dígitos
+  if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
+    console.error('Error: El código postal ${codigoPostal}" es incorrecto para la provincia "${provincia}.');
+    return null;
+  }
+
+  // Devuelve el código postal válido
+  return codigoPostal;
+}
 
 
 valencia();
