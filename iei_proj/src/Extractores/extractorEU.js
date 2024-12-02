@@ -71,6 +71,7 @@ async function guardarEnBD(monumento) {
         provincia = monumento.territory
         municipio = monumento.municipality
         codigoPostal = monumento.postalCode
+        nombre = monumento.documentName
 
         let correcto = await verificarProvincia()
         if(!correcto){
@@ -87,6 +88,11 @@ async function guardarEnBD(monumento) {
             return
         }
         
+        correcto = await verificarMonumento()
+        if(!correcto){
+            return
+        }
+
         if(modificado){
             insertadas_corregidas++
         }else{insertadas_correctamente++}
@@ -154,5 +160,18 @@ async function verificarCodigoPostal() {
     }
     return true;
   }
+
+async function verificarMonumento() {
+    if (monumento == null) {
+        descartadas++
+        return false
+    } else if (documentName == "") {
+        descartadas++
+        return false
+    } else if (documentDescription == "") {
+        descartadas++
+        return false
+    }
+}
 
 euskadi();
