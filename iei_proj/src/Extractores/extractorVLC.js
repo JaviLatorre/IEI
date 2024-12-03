@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');  
 
 const {Builder , By} = require('selenium-webdriver');
+const { Select } = require('selenium-webdriver/lib/select');
 
 const csv = require('csv-parser');  
 
@@ -70,13 +71,13 @@ async function guardarEnBD(monumento) {
       //Saca el código postal según las coordenadas y lo verifica
       let codigoPostal = latitud && longitud ? await await obtenerCodigoPostal(latitud, longitud) : 'Código postal no disponible';
 
-      codigoPostal = validarCodigoPostal(codigoPostal, monumento.provincia);
+      codigoPostal = validarCodigoPostal(codigoPostal, monumento.PROVINCIA);
 
       //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
       const { error: error1} = await supabase
               .from('Provincia')
               .insert([
-              { nombre: monumento.provincia},
+              { nombre: monumento.PROVINCIA},
               ])
                .select()
       if(error1){
@@ -134,24 +135,33 @@ async function obtenerCoordenadas(monumento) {
     driver = await new Builder().forBrowser('chrome').build();
 
     //para acceder a la página web 
-    await driver.get('https://www.latlong.net/'); 
-    
-    const searchBox = await driver.findElement(By.id('place'));
-    await searchBox.sendKeys(monumento.denominacion);
+    await driver.get('https://www.tool-online.com/es/conversion-coordenadas.php'); 
 
-    const searchButton = await driver.findElement(By.xpath("//button[@type='button' and contains(text(), 'Find')]"));
-    await searchButton.click();
+    await driver.findElement(By.xpath("/html/body/div[7]/div[2]/div[2]/div[3]/div[2]/button[1]")).click()
 
-    await driver.sleep(3000);
+    let seleccionPaisOrigen = new Select(driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[1]/div[1]/div[4]/select")))
+    await seleccionPaisOrigen.selectByVisibleText('Espana')
 
-    const latitud = await driver.findElement(By.xpath("//input[@id='lat']")).getAttribute('value');
-    const longitud = await driver.findElement(By.xpath("//input[@id='lng']")).getAttribute('value');
+    let seleccionFormatoOrigen = new Select(driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[1]/div[1]/div[5]/div[1]/select")))
+    await seleccionFormatoOrigen.selectByVisibleText('WGS 84 / UTM zone 30N')
+
+    let seleccionPaisDestino = new Select(driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[4]/select")))
+    await seleccionPaisDestino.selectByVisibleText('Espana')
+
+    let seleccionFormatoDestino = new Select(driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[5]/div[1]/select")))
+    await seleccionFormatoDestino.selectByVisibleText('ETRS89')
+
+    await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[1]/div[1]/div[1]/div[2]/div[2]/div[1]/input")).sendKeys(monumento.UTMNORTE)
+    await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[1]/div[1]/div[2]/div[2]/div[2]/div[1]/input")).sendKeys(monumento.UTMESTE)
+
+    await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[2]/button")).click()
+
+    const latitud = await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[2]/div[2]/div[2]/div[1]/input")).getAttribute('value');
+    const longitud = await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[1]/div[2]/div[2]/div[1]/input")).getAttribute('value');
 
     return{
         latitud: parseFloat(latitud),
         longitud: parseFloat(longitud),
-
-
     };
 
   }catch(err){
@@ -172,23 +182,13 @@ async function obtenerCodigoPostal(latitud, longitud){
  try{
     driver = await new Builder().forBrowser('chrome').build();
 
-    await driver.get('https://www.gps-coordinates.net/');
+    await driver.get('https://www.geocords.com');
 
-    const latInput = await driver.findElement(By.id('latitude'));
-    const lngInput = await driver.findElement(By.id('longitude'));
+    await driver.findElement(By.xpath("/html/body/div/div[2]/div[2]/div[2]/div[2]/button[1]")).click()
 
-    await latInput.sendKeys(latitud.toString());
-    await lngInput.sendKeys(longitud.toString());
+    await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[1]/div/div/form/div/input")).sendKeys(`${latitud} ${longitud}`)
 
-    const searchButton = await driver.findElement(By.xpath("//button[contains(text(), 'Get Address')]"));
-    await searchButton.click();
-
-   
-    await driver.sleep(3000);
-
-    
-    const postalCodeElement = await driver.findElement(By.xpath("//span[@id='postal']"));
-    const codigoPostal = await postalCodeElement.getText();
+    const codigoPostal = await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[2]/div/div[2]/div/div[2]/span")).getText();
 
     return codigoPostal || 'Código postal no disponible';
 
