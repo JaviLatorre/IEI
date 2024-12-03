@@ -66,10 +66,10 @@ async function guardarEnBD(monumento) {
 
     try{
 
-      const {latitud, longitud} = await obtenerCoordenadas(monumento);
+      const coordenadas = await obtenerCoordenadas(monumento);
 
       //Saca el código postal según las coordenadas y lo verifica
-      let codigoPostal = latitud && longitud ? await await obtenerCodigoPostal(latitud, longitud) : 'Código postal no disponible';
+      let codigoPostal = coordenadas.latitud && coordenadas.longitud ? await await obtenerCodigoPostal(latitud, longitud) : 'Código postal no disponible';
 
       codigoPostal = validarCodigoPostal(codigoPostal, monumento.PROVINCIA);
 
