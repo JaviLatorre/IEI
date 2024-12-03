@@ -54,27 +54,45 @@ function determinarTipo(denominacion){
 
 async function eliminarBD() {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
     try {
-        const { data, error } = await supabase.from('Monumento').delete().select('*');
-        if (error) {
-            console.error('Error eliminando monumentos:', error);
+        // Eliminar registros de la tabla Monumento
+        const { data: monumentosEliminados, error: errorMonumento } = await supabase
+            .from('Monumento')
+            .delete()
+            .not('id', 'is', null); // Clausula válida para PostgreSQL
+        if (errorMonumento) {
+            console.error('Error eliminando registros de la tabla Monumento:', errorMonumento);
+        } else {
+            console.log('Registros eliminados de la tabla Monumento:', monumentosEliminados);
         }
-        console.log('Monumentos eliminados:', data);
-        const { data: localidades, error: error2 } = await supabase.from('Localidad').delete().select('*');
-        if (error2) {
-            console.error('Error eliminando la base de datos:', error2);
+
+        // Eliminar registros de la tabla Localidad
+        const { data: localidadesEliminadas, error: errorLocalidad } = await supabase
+            .from('Localidad')
+            .delete()
+            .not('id', 'is', null); // Clausula válida para PostgreSQL
+        if (errorLocalidad) {
+            console.error('Error eliminando registros de la tabla Localidad:', errorLocalidad);
+        } else {
+            console.log('Registros eliminados de la tabla Localidad:', localidadesEliminadas);
         }
-        console.log('Localidades eliminadas:', localidades);
-        const { data: provincias, error: error1 } = await supabase.from('Provincia').delete().select('*');
-        if (error1) {
-            console.error('Error eliminando la base de datos:', error1);
+
+        // Eliminar registros de la tabla Provincia
+        const { data: provinciasEliminadas, error: errorProvincia } = await supabase
+            .from('Provincia')
+            .delete()
+            .not('id', 'is', null); // Clausula válida para PostgreSQL
+        if (errorProvincia) {
+            console.error('Error eliminando registros de la tabla Provincia:', errorProvincia);
+        } else {
+            console.log('Registros eliminados de la tabla Provincia:', provinciasEliminadas);
         }
-        console.log('Provincias eliminadas:', provincias);
-        
+
+        console.log('Operación completada. Todas las tablas están vacías.');
     } catch (e) {
-        console.error('Error inesperado eliminando la base de datos:', e);
+        console.error('Error inesperado eliminando tablas:', e);
     }
-    console.log('Base de datos eliminada exitosamente');
 }
 
 module.exports = { getLocalidad, getProvincia, determinarTipo, eliminarBD };

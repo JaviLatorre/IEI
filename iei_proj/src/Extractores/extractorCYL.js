@@ -252,5 +252,4 @@ async function verificarMonumento(monumento) {
   return true;
 }
 
-module.exports = { xmlToJson };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
-castillayleon();
+module.exports = { xmlToJson, castillayleon };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario

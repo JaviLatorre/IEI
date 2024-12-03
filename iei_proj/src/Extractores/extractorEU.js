@@ -56,7 +56,7 @@ async function euskadi(){
 
         // Parsear el contenido como JSON
         const jsonData = JSON.parse(updatedData);
-        console.log(jsonData)
+        //console.log(jsonData)
 
         const primerosCuatro = jsonData.slice(0, 4);
 
@@ -110,7 +110,7 @@ async function guardarEnBD(monumento) {
         if (modificado) {
             insertadas_corregidas++
         } else {insertadas_correctamente++}
-        console.log(municipio)
+        //console.log(municipio)
         //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
         const { data: provin, error: error1} = await supabase
                 .from('Provincia')
@@ -216,4 +216,4 @@ async function verificarMonumento() {
     return true
 }
 
-euskadi();
+module.exports = { euskadi };
