@@ -44,7 +44,7 @@ async function xmlToJson(xmlFilePath, outputFolder) {
 }
 
 // Si este archivo se ejecuta directamente, convertimos el archivo XML especificado a JSON
-const xmlFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.xml');
+const xmlFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentosEntrega1.xml');
 const outputFolder = path.join(__dirname, '../FuentesDeDatos');
 xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la conversión
 
@@ -52,7 +52,7 @@ xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la c
 async function castillayleon() {
   try {
     // Leer archivo JSON
-    const jsonFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.json');
+    const jsonFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentosEntrega1.json');
 
     try {
       console.time('Tiempo de ejecución');
@@ -74,14 +74,14 @@ async function castillayleon() {
         return;
       }
 
-      // Limitar a los primeros 5 monumentos
-      const primerosCincoMonumentos = monumentos.slice(0, 5);
+      // // Limitar a los primeros 5 monumentos
+      // const primerosCincoMonumentos = monumentos.slice(0, 5);
 
       // Contador de monumentos procesados
       let monumentosProcesados = 0;
 
       // Iterar solo sobre los primeros 5 monumentos
-      for (const monumento of primerosCincoMonumentos) {
+      for (const monumento of monumentos) {
         console.log('Monumento completo:', monumento); // Imprimir todo el objeto de cada monumento
         await guardarEnBD(monumento);
         monumentosProcesados++; // Aumentar el contador cada vez que se procesa un monumento
@@ -91,6 +91,7 @@ async function castillayleon() {
       console.log(`Número de monumentos procesados: ${monumentosProcesados}`);
       console.log('Monumentos insertados correctamente:', insertadas_correctamente);
       console.log('Monumentos corregidos:', insertadas_corregidas);
+      console.log('Monumentos descartados:', descartadas);
     } catch (err) {
       console.error('Error procesando el archivo JSON:', err);
     }
