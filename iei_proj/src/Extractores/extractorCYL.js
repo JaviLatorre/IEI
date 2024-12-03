@@ -10,6 +10,7 @@ let insertadas_correctamente = 0;
 let insertadas_corregidas = 0;
 let descartadas = 0;
 let modificado = false;
+let nombresProcesados=[];
 
 let provincia = "";
 
@@ -92,6 +93,7 @@ async function castillayleon() {
       console.log('Monumentos insertados correctamente:', insertadas_correctamente);
       console.log('Monumentos corregidos:', insertadas_corregidas);
       console.log('Monumentos descartados:', descartadas);
+      console.log(nombresProcesados);
     } catch (err) {
       console.error('Error procesando el archivo JSON:', err);
     }
@@ -108,6 +110,7 @@ async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
   provincia = monumento.poblacion.provincia;
+  nombreMonumento=monumento.nombre;
   municipio = monumento.poblacion.municipio;
   longitud = monumento.coordenadas.longitud;
   latitud = monumento.coordenadas.latitud;
@@ -169,6 +172,7 @@ async function guardarEnBD(monumento) {
         codigo_postal: validarCodigoPostal(monumento.codigoPostal, provincia),
         en_localidad: municipio
       }]);
+      nombresProcesados.push(monumento.nombre)
     if (error3) {
       console.error('Error al insertar el monumento:', error3.message);
     } else {
@@ -178,6 +182,8 @@ async function guardarEnBD(monumento) {
     console.error('Error guardando en BD', err);
   }
 }
+
+
 
 // Función para determinar el tipo de monumento
 function determinarTipo(denominacion) {
@@ -257,7 +263,10 @@ async function verificarMonumento(monumento) {
     return false
   } else if (codigoPostal === null || codigoPostal === "" || 'codigoPostal' in monumento === false) {
     descartadas++;
-    return false
+    return false;
+  } else if (nombresProcesados.includes(nombreMonumento)) {
+    descartadas++;
+    return false;
   }
   return true;
 }
