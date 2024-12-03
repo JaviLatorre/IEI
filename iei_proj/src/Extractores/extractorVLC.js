@@ -215,6 +215,7 @@ function validarCodigoPostal(codigoPostal, provincia) {
     return null;
   }
 
+  if(codigoPostal == 'Código postal no disponible') return codigoPostal
   // Elimina espacios extra por si acaso
   codigoPostal = codigoPostal.toString().trim();
 
@@ -224,8 +225,9 @@ function validarCodigoPostal(codigoPostal, provincia) {
   }
 
   // Comprueba que todos los códigos postales tengan 5 dígitos
+  
   if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
-    console.error('Error: El código postal ${codigoPostal}" es incorrecto para la provincia "${provincia}.');
+    console.error(`Error: El código postal ${codigoPostal} es incorrecto para la provincia ${provincia}.`);
     return null;
   }
 
