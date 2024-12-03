@@ -21,84 +21,47 @@ function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que c
 
   // Abrimos el archivo CSV y le indicamos que el delimitador es el punto y coma (';')
   fs.createReadStream(csvFilePath)
-    .pipe(csv({ separator: ';' }))  // Usamos el separador adecuado para que el parser entienda las columnas
-    .on('data', (data) => {  // Cada vez que leemos una nueva fila (un objeto con los datos de la fila)
-      // Limpiar las comillas innecesarias en los valores de cada columna
-      for (const key in data) {  // Recorremos cada clave de la fila
-        if (data.hasOwnProperty(key)) {  // Verificamos que la clave es propia del objeto
-          data[key] = data[key].replace(/"/g, '').trim();  // Quitamos las comillas dobles y los espacios extra
+    .pipe(csv({ separator: ';' }))
+    .on('data', (data) => {
+      for (const key in data) {
+        if (data.hasOwnProperty(key)) {
+          data[key] = data[key].replace(/"/g, '').trim();
         }
       }
-      results.push(data);  // Añadimos la fila limpia al array de resultados
+      results.push(data);
     })
-    .on('end', () => {  // Cuando termine de leer todo el archivo CSV
-      // Generamos el nombre del archivo JSON de salida, tomando el nombre del CSV y cambiando la extensión a '.json'
+    .on('end', () => {
       const jsonFileName = path.basename(csvFilePath, path.extname(csvFilePath)) + '.json';
-      // Creamos la ruta completa para el archivo de salida, usando la carpeta de salida y el nombre del archivo JSON
       const outputFilePath = path.join(outputFolder, jsonFileName);
-      
-      // Escribimos el contenido de 'results' (el array con las filas del CSV convertidas a JSON) en un archivo JSON
-      fs.writeFileSync(outputFilePath, JSON.stringify(results, null, 2), 'utf-8');  // Usamos 'JSON.stringify' para convertir el array a JSON
-      //console.log(Archivo JSON guardado en: ${outputFilePath});  // Imprimimos un mensaje indicando dónde se guardó el archivo JSON
+      fs.writeFileSync(outputFilePath, JSON.stringify(results, null, 2), 'utf-8');
+      console.log(`Archivo JSON guardado en: ${outputFilePath}`);
     });
 }
-
-// Ejecutamos la conversión si el archivo se ejecuta directamente, especificando la ruta del CSV y la carpeta de salida
-const csvFilePath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural.csv');
-const outputFolder = path.join(__dirname, '../FuentesDeDatos');
-csvToJson(csvFilePath, outputFolder);  // Llamamos a la función para convertir el CSV a JSON
-//module.exports = { csvToJson };  // Exportamos la función en caso de que la necesitemos en otro archivo
-
-async function valencia(){
+ 
+async function valencia() {
   try {
-    // Leer archivo JSON
     const filepath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural.json');
-    const data = await fs.readFile(filepath, 'utf8');
-
-    // Parsear el contenido como JSON
+    const data = await fs.promises.readFile(filepath, 'utf8');
+   
     const jsonData = JSON.parse(data);
-
-    // Iterar sobre los monumentos y esperar que se complete cada operación
-    for (const monumento of jsonData){
+    const primerosCuatro = jsonData.slice(0,4);
+ 
+    for (const monumento of primerosCuatro) {
       await guardarEnBD(monumento);
     }
-    console.timeEnd('Tiempo de ejecución');
-    
+
     console.log('Todos los monumentos han sido procesados.');
     console.log('Monumentos insetados correctamente: ', insertadas_correctamente)
     console.log('Monumentos corregidos: ', insertadas_corregidas)
     console.log('Monumentos descartados: ', descartadas)
 
   } catch (err) {
-    console.error('Error procesando los monumentos: ', err);
+    console.error('Error procesando los monumentos:', err);
   }
 }
-
+ 
 async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-    modificado = false
-    provincia = monumento.provincia
-    municipio = monumento.municipio
-    
-    let correcto = await verificarProvincia()
-        if (!correcto) {
-            return
-        }
-
-        correcto = await verificarMunicipio()
-        if (!correcto) {
-            return
-        }
-        
-        correcto = await verificarMonumento()
-        if (!correcto) {
-            return
-        }
-
-        if (modificado){
-            insertadas_corregidas++
-        } else {insertadas_correctamente++}
-        console.log(municipio)
 
     try{
 
@@ -123,26 +86,22 @@ async function guardarEnBD(monumento) {
       //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
       const{ error: error2} = await supabase  
           .from('Localidad')
-          .insert([
-              { nombre: monumento.municipo, en_provincia: monumento.en_provincia },
-            ])
-            .select()
-      if(error2){
-          console.error('Error guardando la localidad:',error2);
-      }
-
-      //Insertar Monumento 
-      const{ error: error3} = await supabase  
+          .insert([{ nombre: monumento.MUNICIPIO, en_provincia: monumento.PROVINCIA }]);
+      if (error2) console.error('Error guardando la localidad:', error2);
+ 
+      // Insertar monumento
+      const tipo = determinarTipo(monumento.DENOMINACION || '');
+      const { error: error3 } = await supabase
           .from('Monumento')
           .insert([
-              { nombre: monumento.denominacion,
-                tipo: determinarTipo(monumento.denominacion),
-                direccion : direccion || 'Dirección no disponible',
-                descripcion : 'Monumento en la localidad de ${monumento.municipio}', 
-                latitud: parseFloat(monumento.UTMNORTE)|| null ,
-                longitud: parseFloat(monumento.UTMESTE) || null,
-                codigo_postal: codigoPostal,  
-                en_localidad: monumento.municipo,
+              {
+                  nombre: monumento.DENOMINACION || 'Nombre desconocido',
+                  tipo,
+                  direccion: coordenadas.direccion || 'Dirección no disponible',
+                  latitud: parseFloat(coordenadas.latitud) || null,
+                  longitud: parseFloat(coordenadas.longitud) || null,
+                  codigo_postal: coordenadas.codigoPostal || 'Código postal no disponible',
+                  en_localidad: monumento.MUNICIPIO,
               },
             ])
             .select()
@@ -158,19 +117,18 @@ async function guardarEnBD(monumento) {
 }
 
  function determinarTipo(denominacion){
-  const lowername = denominacion.toLowerCase();
+ const lowername = denominacion.toLowerCase();
 
-  if(lowername.includes('yacimiento')) return 'yacimiento arqueológico';
-  if(lowername.includes('iglesia') || lowername.includes('ermita')) return 'Iglesia-Ermita';
-  if(lowername.includes('monasterio') || lowername.includes('convento')) return 'Monasterio-Convento';
-  if(lowername.includes('castillo') || lowername.includes('fortaleza') || lowername.includes('torre')) return 'Castillo-Fortaleza-Torre';
-  if(lowername.includes('palacio') || lowername.includes('casa') || lowername.includes('teatro')  || lowername.includes('ayuntamiento')) return 'Iglesia-Ermita';
-  if(lowername.includes('puente') ) return 'Puente';
-  return 'otros';
+ if(lowername.includes('yacimiento')) return 'yacimiento arqueológico';
+ if(lowername.includes('iglesia') || lowername.includes('ermita')) return 'Iglesia-Ermita';
+ if(lowername.includes('monasterio') || lowername.includes('convento')) return 'Monasterio-Convento';
+ if(lowername.includes('castillo') || lowername.includes('fortaleza') || lowername.includes('torre')) return 'Castillo-Fortaleza-Torre';
+ if(lowername.includes('palacio') || lowername.includes('casa') || lowername.includes('teatro')  || lowername.includes('ayuntamiento')) return 'Iglesia-Ermita';
+ if(lowername.includes('puente') ) return 'Puente';
+ return 'otros';
 }
-
-// Función para obtener la dirección con Selenium
-async function  obtenerCoordenadas(monumento) {
+ 
+async function obtenerCoordenadas(monumento) {
   let driver;
   try{
     driver = await new Builder().forBrowser('chrome').build();
@@ -196,45 +154,52 @@ async function  obtenerCoordenadas(monumento) {
 
     };
 
-   }catch(err) {
+  }catch(err){
 
     console.error('Error obteniendo coordenadas', err);
     return {latitud: null, longitud: null}; 
-  } finally {
-    if(driver) await driver.quit();
+  }finally{
+    if( driver) await driver.quit();
+
   }
 
+
+  
 }
 
 async function obtenerCodigoPostal(latitud, longitud){
-  let driver; 
-  try {
-      driver = await new Builder().forBrowser('chrome').build();
+ let driver; 
+ try{
+    driver = await new Builder().forBrowser('chrome').build();
 
-      await driver.get('https://www.gps-coordinates.net/');
+    await driver.get('https://www.gps-coordinates.net/');
 
-      const latInput = await driver.findElement(By.id('latitude'));
-      const lngInput = await driver.findElement(By.id('longitude'));
+    const latInput = await driver.findElement(By.id('latitude'));
+    const lngInput = await driver.findElement(By.id('longitude'));
 
-      await latInput.sendKeys(latitud.toString());
-      await lngInput.sendKeys(longitud.toString());
+    await latInput.sendKeys(latitud.toString());
+    await lngInput.sendKeys(longitud.toString());
 
-      const searchButton = await driver.findElement(By.xpath("//button[contains(text(), 'Get Address')]"));
-      await searchButton.click();
+    const searchButton = await driver.findElement(By.xpath("//button[contains(text(), 'Get Address')]"));
+    await searchButton.click();
+
+   
+    await driver.sleep(3000);
+
     
-      await driver.sleep(3000);
+    const postalCodeElement = await driver.findElement(By.xpath("//span[@id='postal']"));
+    const codigoPostal = await postalCodeElement.getText();
 
-      const postalCodeElement = await driver.findElement(By.xpath("//span[@id='postal']"));
-      const codigoPostal = await postalCodeElement.getText();
+    return codigoPostal || 'Código postal no disponible';
 
-      return codigoPostal || 'Código postal no disponible';
+ }catch(err){
+      console.log('Error obteniendo el código postal:',err);
+      return 'Código postal no disponible';
+ }finally{
+      if(driver) await driver.quit();
 
-  } catch (err) {
-        console.log('Error obteniendo el código postal:',err);
-        return 'Código postal no disponible';
-  } finally{
-        if (driver) await driver.quit();
-  }
+ }
+
 
 }
 
@@ -263,30 +228,5 @@ function validarCodigoPostal(codigoPostal, provincia) {
   return codigoPostal;
 }
 
-async function verificarMunicipio(){
-  if(municipio == ""){
-      descartadas++
-      return false
-  }
-  else if(municipio.includes('/')){
-      const textoAntes = municipio.split('/')[0];
-      municipio = textoAntes
-      modificado = true
-      return true
-  }
-  return true
-}
-
-async function verificarProvincia(){
-  if(provincia == ""){
-      descartadas++
-      return false
-  }
-  else if (provincia != "VALENCIA" && provincia != "CASTELLÓN" && provincia != 'ALICANTE') {
-      descartadas++
-      return false
-  }
-  return true
-}
 
 valencia();
