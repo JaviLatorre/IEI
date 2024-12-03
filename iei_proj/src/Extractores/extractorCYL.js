@@ -51,39 +51,56 @@ xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la c
 // Función principal para procesar el archivo JSON
 async function castillayleon() {
   try {
-    // Leer archivo JSON de manera asíncrona
+    // Leer archivo JSON
     const jsonFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.json');
-    console.time('Tiempo de ejecución');
 
-    const data = await fs.readFile(jsonFilePath, 'utf8');  // Leemos el archivo JSON
-    const jsonData = JSON.parse(data);  // Parseamos el JSON
+    try {
+      console.time('Tiempo de ejecución');
+  
+      // Leer archivo JSON generado
+      const data = await fs.readFile(jsonFilePath, 'utf8');
+      
+      // Parsear contenido JSON
+      const jsonData = JSON.parse(data);
 
-    // Asegurarse de que la estructura es correcta y contiene los monumentos
-    const monumentos = jsonData?.monumentos?.monumento || [];
+      // Ver la estructura del JSON para depuración (opcional)
+      //console.log('Estructura del JSON:', JSON.stringify(jsonData, null, 2));
+      
+      // Acceder correctamente a los monumentos
+      const monumentos = jsonData?.monumentos?.monumento || [];
+      
+      if (monumentos.length === 0) {
+        console.log('No se encontraron monumentos en el archivo JSON.');
+        return;
+      }
 
+      // Limitar a los primeros 5 monumentos
+      const primerosCincoMonumentos = monumentos.slice(0, 5);
 
-    if (monumentos.length === 0) {
-      console.log('No se encontraron monumentos en el archivo JSON.');
-      return;
+      // Contador de monumentos procesados
+      let monumentosProcesados = 0;
+
+      // Iterar solo sobre los primeros 5 monumentos
+      for (const monumento of primerosCincoMonumentos) {
+        console.log('Monumento completo:', monumento); // Imprimir todo el objeto de cada monumento
+        console.log(`Procesando monumento: ${monumento.nombre || monumento.denominacion || 'sin nombre'}`);
+        await guardarEnBD(monumento);
+        monumentosProcesados++; // Aumentar el contador cada vez que se procesa un monumento
+      }
+
+      console.timeEnd('Tiempo de ejecución');
+      console.log(`Número de monumentos procesados: ${monumentosProcesados}`);
+      console.log('Monumentos insertados correctamente:', insertadas_correctamente);
+      console.log('Monumentos corregidos:', insertadas_corregidas);
+    } catch (err) {
+      console.error('Error procesando el archivo JSON:', err);
     }
-
-    // Limitar a los primeros 5 monumentos
-    const primerosCincoMonumentos = monumentos.slice(0, 5);
-
-    // Iterar solo sobre los primeros 5 monumentos
-    for (const monumento of primerosCincoMonumentos) {
-      console.log(`Procesando monumento: ${monumento.denominacion}`);
-      await guardarEnBD(monumento);
-    }
-
-    console.timeEnd('Tiempo de ejecución');
-    console.log('Todos los monumentos han sido procesados.');
-    console.log('Monumentos insertados correctamente:', insertadas_correctamente);
-    console.log('Monumentos corregidos:', insertadas_corregidas);
   } catch (err) {
-    console.error('Error procesando el archivo JSON:', err);
+    console.error('Error procesando llamando a castillayLeon function:', err);
   }
 }
+
+
 
 // Función para guardar el monumento en la base de datos
 async function guardarEnBD(monumento) {
