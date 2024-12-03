@@ -111,6 +111,7 @@ async function guardarEnBD(monumento) {
   municipio = monumento.poblacion.municipio;
   longitud = monumento.coordenadas.longitud;
   latitud = monumento.coordenadas.latitud;
+  codigoPostal = monumento.codigoPostal
 
 
   let correcto = await verificarProvincia();
@@ -254,8 +255,14 @@ async function verificarMonumento(monumento) {
   } else if (longitud === "" || latitud === "") {
     descartadas++;
     return false
+  } else if (codigoPostal === null || codigoPostal === "" || 'codigoPostal' in monumento === false) {
+    descartadas++;
+    return false
   }
   return true;
 }
+
+
+castillayleon()
 
 module.exports = { xmlToJson, castillayleon };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
