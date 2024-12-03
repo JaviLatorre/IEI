@@ -1,3 +1,4 @@
+// fuente de datos monumentos
 const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
 
