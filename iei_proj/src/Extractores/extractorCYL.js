@@ -83,7 +83,6 @@ async function castillayleon() {
       // Iterar solo sobre los primeros 5 monumentos
       for (const monumento of primerosCincoMonumentos) {
         console.log('Monumento completo:', monumento); // Imprimir todo el objeto de cada monumento
-        console.log(`Procesando monumento: ${monumento.nombre || monumento.denominacion || 'sin nombre'}`);
         await guardarEnBD(monumento);
         monumentosProcesados++; // Aumentar el contador cada vez que se procesa un monumento
       }
@@ -104,10 +103,11 @@ async function castillayleon() {
 
 // Función para guardar el monumento en la base de datos
 async function guardarEnBD(monumento) {
+  console.log('guardando monumento');
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  provincia = monumento.territory;
-  municipio = monumento.municipality;
+  provincia = monumento.poblacion.provincia;
+  municipio = monumento.poblacion.municipio;
 
   let correcto = await verificarProvincia();
   if (!correcto) return;
@@ -115,20 +115,19 @@ async function guardarEnBD(monumento) {
   correcto = await verificarMunicipio();
   if (!correcto) return;
 
-  correcto = await verificarMonumento();
+  correcto = await verificarMonumento(monumento);
   if (!correcto) return;
-
   if (modificado) {
     insertadas_corregidas++;
   } else {
     insertadas_correctamente++;
   }
-
+  
   try {
     // Insertar provincia, municipio y monumento
     console.log(`Insertando provincia: ${provincia}`);
     console.log(`Insertando municipio: ${municipio}`);
-    console.log(`Insertando monumento: ${monumento.denominacion}`);
+    console.log(`Insertando monumento: ${monumento.nombre}`);
 
     // Insertar provincia
     const { error: error1 } = await supabase
@@ -156,16 +155,15 @@ async function guardarEnBD(monumento) {
     const { error: error3 } = await supabase
       .from('Monumento')
       .insert([{
-        nombre: monumento.denominacion,
-        tipo: determinarTipo(monumento.denominacion),
-        direccion: monumento.direccion,
-        descripcion: monumento.descripcion,
-        latitud: monumento.latitud,
-        longitud: monumento.longitud,
-        codigo_postal: validarCodigoPostal(monumento.postalCode, provincia),
+        nombre: monumento.nombre,
+        tipo: determinarTipo(monumento.tipoMonumento),
+        direccion: determinarDireccion(monumento.calle),
+        descripcion: limpiarDescripcion(monumento.Descripcion),
+        latitud: monumento.coordenadas.latitud,
+        longitud: monumento.coordenadas.longitud,
+        codigo_postal: validarCodigoPostal(monumento.codigoPostal, provincia),
         en_localidad: municipio
       }]);
-
     if (error3) {
       console.error('Error al insertar el monumento:', error3.message);
     } else {
@@ -180,15 +178,23 @@ async function guardarEnBD(monumento) {
 function determinarTipo(denominacion) {
   const lowername = denominacion.toLowerCase();
 
-  if (lowername.includes('yacimiento')) return 'yacimiento arqueológico';
+  if (lowername.includes('yacimiento')) return 'Yacimiento Arqueológico';
   if (lowername.includes('iglesia') || lowername.includes('ermita') || lowername.includes('catedral') || lowername.includes('sinagoga')) return 'Iglesia-Ermita';
   if (lowername.includes('monasterio') || lowername.includes('convento') || lowername.includes('santuario')) return 'Monasterio-Convento';
   if (lowername.includes('castillo') || lowername.includes('palacio') || lowername.includes('torre') || lowername.includes('muralla') || lowername.includes('puerta')) return 'Castillo-Fortaleza-Torre';
   if (lowername.includes('casa consistorial') || lowername.includes('casa noble') || lowername.includes('real sitio') || lowername.includes('sitio histórico')) return 'Iglesia-Ermita';
   if (lowername.includes('puente')) return 'Puente';
-  return 'otros';
+  return 'Otros';
 }
 
+function determinarDireccion(calle){
+  if(calle == null) calle = 'Dirección no disponible';
+  return calle;
+}
+function limpiarDescripcion(texto) {
+  // Expresión regular para eliminar etiquetas <p> con o sin atributos
+  return texto.replace(/<p[^>]*>/g, '').replace(/<\/p>/g, '');
+}
 // Función para validar el código postal
 function validarCodigoPostal(codigoPostal, provincia) {
   if (!codigoPostal) {
@@ -198,7 +204,7 @@ function validarCodigoPostal(codigoPostal, provincia) {
 
   codigoPostal = codigoPostal.toString().trim();
 
-  if ((provincia.toUpperCase() === "AVILA" || provincia.toUpperCase() === "BURGOS") && codigoPostal.length === 4) {
+  if ((provincia.toUpperCase() === "ÁVILA" || provincia.toUpperCase() === "BURGOS") && codigoPostal.length === 4) {
     return "0" + codigoPostal;
   }
 
@@ -237,11 +243,12 @@ async function verificarMunicipio() {
 }
 
 // Función para verificar el monumento
-async function verificarMonumento() {
+async function verificarMonumento(monumento) {
   if (monumento == null) {
     descartadas++;
     return false;
   }
+  return true;
 }
 
 module.exports = { xmlToJson };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
