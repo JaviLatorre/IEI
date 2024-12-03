@@ -1,3 +1,4 @@
+// fuente de datos monumentos
 const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
 
@@ -43,7 +44,8 @@ xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la c
 async function castillayleon(){
   try {
     // Leer archivo JSON
-    const data = await fs.readFile('C:\Users\javier\IEI\iei_proj\src\FuentesDeDatos\monumentos.json',utf8);
+    const filepath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.json');
+    const data = await fs.readFile(filepath, 'utf8');
 
     // Parsear el contenido como JSON
     const jsonData = JSON.parse(data);
