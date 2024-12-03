@@ -1,120 +1,254 @@
-const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
+// fuente de datos monumentos
+const { SUPABASE_URL, SUPABASE_KEY } = require('../credencialesSupaBase');
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
 
-const fs = require('fs');  // Importamos el módulo 'fs' para poder trabajar con archivos (leer y escribir)
-const path = require('path');  // Importamos el módulo 'path' para trabajar con rutas de archivos de forma flexible
+const fs = require('fs').promises;  // Usamos la versión Promesa de 'fs' para trabajar con async/await
+const path = require('path');
 const xml2js = require('xml2js');  // Importamos el módulo 'xml2js' para convertir archivos XML a JSON
 
-function xmlToJson(xmlFilePath, outputFolder) {  // Definimos la función que convierte XML a JSON
-  const parser = new xml2js.Parser({ explicitArray: false, mergeAttrs: true });  // Creamos un parser que nos ayudará a convertir el XML a JSON
+let insertadas_correctamente = 0;
+let insertadas_corregidas = 0;
+let descartadas = 0;
+let modificado = false;
 
-  // Leemos el archivo XML especificado en la ruta 'xmlFilePath' (que está en formato texto)
-  fs.readFile(xmlFilePath, 'utf-8', (err, data) => {
-    if (err) {  // Si ocurre un error al leer el archivo
-      console.error(`Error al leer el archivo XML: ${err}`);  // Mostramos el error en consola
-      return;  // Terminamos la función si hay error
-    }
+let provincia = "";
 
-    // Parseamos el contenido del archivo XML a un objeto JSON
-    parser.parseString(data, (err, result) => {  // 'result' es el objeto JSON resultante del parseo
-      if (err) {  // Si ocurre un error al parsear el XML
-        console.error(`Error al parsear el XML: ${err}`);  // Mostramos el error en consola
-        return;  // Terminamos la función si hay error
+// Función para convertir XML a JSON de manera asíncrona
+async function xmlToJson(xmlFilePath, outputFolder) {
+  const parser = new xml2js.Parser({ explicitArray: false, mergeAttrs: false });
+
+  try {
+    const data = await fs.readFile(xmlFilePath, 'utf-8');  // Leemos el archivo XML
+    parser.parseString(data, async (err, result) => {  // Parseamos el contenido del archivo XML
+      if (err) {
+        console.error(`Error al parsear el XML: ${err}`);
+        return;
       }
 
-      // Aquí podemos modificar la estructura si lo necesitamos, pero por ahora no cambiamos el contenido del JSON.
+      // Genera la ruta de salida y verifica si la carpeta existe
+      const jsonFileName = path.basename(xmlFilePath, path.extname(xmlFilePath)) + '.json';
+      const outputFilePath = path.join(outputFolder, jsonFileName);
 
-      // Generamos el nombre del archivo JSON basado en el nombre del archivo XML
-      const jsonFileName = path.basename(xmlFilePath, path.extname(xmlFilePath)) + '.json';  // Obtenemos el nombre del archivo XML y lo cambiamos a '.json'
-      const outputFilePath = path.join(outputFolder, jsonFileName);  // Creamos la ruta completa del archivo JSON usando la carpeta de salida
+      // Asegúrate de que la carpeta de salida exista
+      if (!fs.access(outputFolder)) {
+        await fs.mkdir(outputFolder, { recursive: true });
+      }
 
-      // Escribimos el JSON resultante en el archivo generado con formato legible (2 espacios de indentación)
-      fs.writeFileSync(outputFilePath, JSON.stringify(result, null, 2), 'utf-8');  // Usamos 'JSON.stringify' para convertir el objeto JSON a texto
-      console.log(`Archivo JSON guardado en: ${outputFilePath}`);  // Mostramos un mensaje indicando que el archivo se guardó correctamente
+      // Guarda el JSON resultante de manera asíncrona
+      await fs.writeFile(outputFilePath, JSON.stringify(result, null, 2), 'utf-8');
+      console.log(`Archivo JSON guardado en: ${outputFilePath}`);
     });
-  });
-}
-
-// Si este archivo se ejecuta directamente, convertimos el archivo XML especificado a JSON
-const xmlFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.xml');  // Especificamos la ruta del archivo XML
-const outputFolder = path.join(__dirname, '../FuentesDeDatos');  // Especificamos la carpeta donde se guardará el archivo JSON
-xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la conversión
-
-async function castillayleon(){
-  try {
-    // Leer archivo JSON
-    const data = await fs.readFile('C:\Users\javier\IEI\iei_proj\src\FuentesDeDatos\monumentos.json',utf8);
-
-    // Parsear el contenido como JSON
-    const jsonData = JSON.parse(data);
-
-    // Iterar sobre los monumentos y esperar que se complete cada operación
-    for (const monumento of jsonData){
-      await guardarEnBD(monumento);
-    }
-
-    console.log('Todos los monumentos han sido procesados.');
   } catch (err) {
-    console.error('Error: ', err);
+    console.error(`Error al leer el archivo XML: ${err}`);
   }
 }
 
-async function guardarEnBD(monumento) {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Si este archivo se ejecuta directamente, convertimos el archivo XML especificado a JSON
+const xmlFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.xml');
+const outputFolder = path.join(__dirname, '../FuentesDeDatos');
+xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la conversión
 
-      //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
-      const { error: error1} = await supabase
-              .from('Provincia')
-              .insert([
-              { nombre: monumento.provincia},
-              ])
-               .select()
-      if(error1){
-          //console.error('Error guardando la procvincia:',error1);
-      }
+// Función principal para procesar el archivo JSON
+async function castillayleon() {
+  try {
+    // Leer archivo JSON
+    const jsonFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.json');
+
+    try {
+      console.time('Tiempo de ejecución');
+  
+      // Leer archivo JSON generado
+      const data = await fs.readFile(jsonFilePath, 'utf8');
       
-      //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
-      const{ error: error2} = await supabase  
-          .from('Localidad')
-          .insert([
-              { nombre: monumento.municipo, en_provincia: monumento.en_provincia },
-            ])
-            .select()
-      if(error2){
-          //console.error('Error guardando el municipio:',error2);
+      // Parsear contenido JSON
+      const jsonData = JSON.parse(data);
+
+      // Ver la estructura del JSON para depuración (opcional)
+      //console.log('Estructura del JSON:', JSON.stringify(jsonData, null, 2));
+      
+      // Acceder correctamente a los monumentos
+      const monumentos = jsonData?.monumentos?.monumento || [];
+      
+      if (monumentos.length === 0) {
+        console.log('No se encontraron monumentos en el archivo JSON.');
+        return;
       }
 
-      //Insertar Monumento 
-      const{ error: error3} = await supabase  
-          .from('Monumento')
-          .insert([
-              { nombre: monumento.denominacion,
-                tipo: determinarTipo(monumento.denominacion),
-                direccion : monumento.direccion,
-                descripcion : monumento.descripcion, 
-                latitud: monumento.latitud ,
-                longitud: monumento.longitud,
-                codigo_postal: monumento.codigo_postal,  //falta hacer verificación 5 dígitos y que sea válido
-                en_localidad: monumento.municipo,
-              },
-            ])
-            .select()
-      if(error3){
-          //console.error('Error guardando el municipio:',error2);
+      // Limitar a los primeros 5 monumentos
+      const primerosCincoMonumentos = monumentos.slice(0, 5);
+
+      // Contador de monumentos procesados
+      let monumentosProcesados = 0;
+
+      // Iterar solo sobre los primeros 5 monumentos
+      for (const monumento of primerosCincoMonumentos) {
+        console.log('Monumento completo:', monumento); // Imprimir todo el objeto de cada monumento
+        await guardarEnBD(monumento);
+        monumentosProcesados++; // Aumentar el contador cada vez que se procesa un monumento
       }
 
+      console.timeEnd('Tiempo de ejecución');
+      console.log(`Número de monumentos procesados: ${monumentosProcesados}`);
+      console.log('Monumentos insertados correctamente:', insertadas_correctamente);
+      console.log('Monumentos corregidos:', insertadas_corregidas);
+    } catch (err) {
+      console.error('Error procesando el archivo JSON:', err);
+    }
+  } catch (err) {
+    console.error('Error procesando llamando a castillayLeon function:', err);
+  }
 }
 
-function determinarTipo(denominacion){
- const lowername = denominacion.toLowerCase();
 
- if(lowername.includes('yacimiento')) return 'yacimiento arqueológico';
- if(lowername.includes('iglesia') || lowername.includes('ermita') || lowername.includes('catedral') || lowername.includes('sinagoga')) return 'Iglesia-Ermita';
- if(lowername.includes('monasterio') || lowername.includes('convento') || lowername.includes('santuario')) return 'Monasterio-Convento';
- if(lowername.includes('castillo') || lowername.includes('palacio') || lowername.includes('torre') || lowername.includes('muralla') || lowername.includes('puerta')) return 'Castillo-Fortaleza-Torre';
- if(lowername.includes('casa consistorial') || lowername.includes('casa noble') || lowername.includes('real sitio')  || lowername.includes('sitio histórico')) return 'Iglesia-Ermita';
- if(lowername.includes('puente') ) return 'Puente';
- return 'otros';
+
+// Función para guardar el monumento en la base de datos
+async function guardarEnBD(monumento) {
+  console.log('guardando monumento');
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  provincia = monumento.poblacion.provincia;
+  municipio = monumento.poblacion.municipio;
+
+  let correcto = await verificarProvincia();
+  if (!correcto) return;
+
+  correcto = await verificarMunicipio();
+  if (!correcto) return;
+
+  correcto = await verificarMonumento(monumento);
+  if (!correcto) return;
+  if (modificado) {
+    insertadas_corregidas++;
+  } else {
+    insertadas_correctamente++;
+  }
+  
+  try {
+    // Insertar provincia, municipio y monumento
+    console.log(`Insertando provincia: ${provincia}`);
+    console.log(`Insertando municipio: ${municipio}`);
+    console.log(`Insertando monumento: ${monumento.nombre}`);
+
+    // Insertar provincia
+    const { error: error1 } = await supabase
+      .from('Provincia')
+      .insert([{ nombre: provincia }]);
+
+    if (error1) {
+      console.error('Error al insertar la provincia:', error1.message);
+    } else {
+      console.log('Provincia insertada correctamente');
+    }
+
+    // Insertar municipio
+    const { error: error2 } = await supabase
+      .from('Localidad')
+      .insert([{ nombre: municipio, en_provincia: provincia }]);
+
+    if (error2) {
+      console.error('Error al insertar el municipio:', error2.message);
+    } else {
+      console.log('Municipio insertado correctamente');
+    }
+
+    // Insertar monumento
+    const { error: error3 } = await supabase
+      .from('Monumento')
+      .insert([{
+        nombre: monumento.nombre,
+        tipo: determinarTipo(monumento.tipoMonumento),
+        direccion: determinarDireccion(monumento.calle),
+        descripcion: limpiarDescripcion(monumento.Descripcion),
+        latitud: monumento.coordenadas.latitud,
+        longitud: monumento.coordenadas.longitud,
+        codigo_postal: validarCodigoPostal(monumento.codigoPostal, provincia),
+        en_localidad: municipio
+      }]);
+    if (error3) {
+      console.error('Error al insertar el monumento:', error3.message);
+    } else {
+      console.log('Monumento insertado correctamente');
+    }
+  } catch (err) {
+    console.error('Error guardando en BD', err);
+  }
+}
+
+// Función para determinar el tipo de monumento
+function determinarTipo(denominacion) {
+  const lowername = denominacion.toLowerCase();
+
+  if (lowername.includes('yacimiento')) return 'Yacimiento Arqueológico';
+  if (lowername.includes('iglesia') || lowername.includes('ermita') || lowername.includes('catedral') || lowername.includes('sinagoga')) return 'Iglesia-Ermita';
+  if (lowername.includes('monasterio') || lowername.includes('convento') || lowername.includes('santuario')) return 'Monasterio-Convento';
+  if (lowername.includes('castillo') || lowername.includes('palacio') || lowername.includes('torre') || lowername.includes('muralla') || lowername.includes('puerta')) return 'Castillo-Fortaleza-Torre';
+  if (lowername.includes('casa consistorial') || lowername.includes('casa noble') || lowername.includes('real sitio') || lowername.includes('sitio histórico')) return 'Iglesia-Ermita';
+  if (lowername.includes('puente')) return 'Puente';
+  return 'Otros';
+}
+
+function determinarDireccion(calle){
+  if(calle == null) calle = 'Dirección no disponible';
+  return calle;
+}
+function limpiarDescripcion(texto) {
+  // Expresión regular para eliminar etiquetas <p> con o sin atributos
+  return texto.replace(/<p[^>]*>/g, '').replace(/<\/p>/g, '');
+}
+// Función para validar el código postal
+function validarCodigoPostal(codigoPostal, provincia) {
+  if (!codigoPostal) {
+    console.error("Error: Código postal no disponible.");
+    return null;
+  }
+
+  codigoPostal = codigoPostal.toString().trim();
+
+  if ((provincia.toUpperCase() === "ÁVILA" || provincia.toUpperCase() === "BURGOS") && codigoPostal.length === 4) {
+    return "0" + codigoPostal;
+  }
+
+  if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
+    console.error(`Error: El código postal ${codigoPostal} es incorrecto para la provincia ${provincia}.`);
+    return null;
+  }
+
+  return codigoPostal;
+}
+
+// Función para verificar la provincia
+async function verificarProvincia() {
+  if (provincia === "") {
+    descartadas++;
+    return false;
+  } else if (!["León", "Palencia", "Burgos", "Zamora", "Valladolid", "Soria", "Segovia", "Salamanca", "Ávila"].includes(provincia)) {
+    descartadas++;
+    return false;
+  }
+  return true;
+}
+
+// Función para verificar el municipio
+async function verificarMunicipio() {
+  if (municipio === "") {
+    descartadas++;
+    return false;
+  } else if (municipio.includes('/')) {
+    const textoAntes = municipio.split('/')[0];
+    municipio = textoAntes;
+    modificado = true;
+    return true;
+  }
+  return true;
+}
+
+// Función para verificar el monumento
+async function verificarMonumento(monumento) {
+  if (monumento == null) {
+    descartadas++;
+    return false;
+  }
+  return true;
 }
 
 module.exports = { xmlToJson };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario

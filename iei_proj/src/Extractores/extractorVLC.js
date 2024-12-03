@@ -1,3 +1,4 @@
+//fuente de datos bienes_inmuebles
 const fs = require('fs');  
 const path = require('path');  
 
@@ -8,60 +9,57 @@ const csv = require('csv-parser');
 const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
 
+let insertadas_correctamente = 0;
+let insertadas_corregidas = 0;
+let descartadas = 0;
+let modificado = false;
+
+let provincia = "";
 
 function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que convertirá el CSV a JSON
   const results = [];  // Creamos un array vacío donde almacenaremos los resultados (cada fila del CSV)
 
   // Abrimos el archivo CSV y le indicamos que el delimitador es el punto y coma (';')
   fs.createReadStream(csvFilePath)
-    .pipe(csv({ separator: ';' }))  // Usamos el separador adecuado para que el parser entienda las columnas
-    .on('data', (data) => {  // Cada vez que leemos una nueva fila (un objeto con los datos de la fila)
-      // Limpiar las comillas innecesarias en los valores de cada columna
-      for (const key in data) {  // Recorremos cada clave de la fila
-        if (data.hasOwnProperty(key)) {  // Verificamos que la clave es propia del objeto
-          data[key] = data[key].replace(/"/g, '').trim();  // Quitamos las comillas dobles y los espacios extra
+    .pipe(csv({ separator: ';' }))
+    .on('data', (data) => {
+      for (const key in data) {
+        if (data.hasOwnProperty(key)) {
+          data[key] = data[key].replace(/"/g, '').trim();
         }
       }
-      results.push(data);  // Añadimos la fila limpia al array de resultados
+      results.push(data);
     })
-    .on('end', () => {  // Cuando termine de leer todo el archivo CSV
-      // Generamos el nombre del archivo JSON de salida, tomando el nombre del CSV y cambiando la extensión a '.json'
+    .on('end', () => {
       const jsonFileName = path.basename(csvFilePath, path.extname(csvFilePath)) + '.json';
-      // Creamos la ruta completa para el archivo de salida, usando la carpeta de salida y el nombre del archivo JSON
       const outputFilePath = path.join(outputFolder, jsonFileName);
-      
-      // Escribimos el contenido de 'results' (el array con las filas del CSV convertidas a JSON) en un archivo JSON
-      fs.writeFileSync(outputFilePath, JSON.stringify(results, null, 2), 'utf-8');  // Usamos 'JSON.stringify' para convertir el array a JSON
-      //console.log(Archivo JSON guardado en: ${outputFilePath});  // Imprimimos un mensaje indicando dónde se guardó el archivo JSON
+      fs.writeFileSync(outputFilePath, JSON.stringify(results, null, 2), 'utf-8');
+      console.log(`Archivo JSON guardado en: ${outputFilePath}`);
     });
 }
-
-// Ejecutamos la conversión si el archivo se ejecuta directamente, especificando la ruta del CSV y la carpeta de salida
-const csvFilePath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural.csv');
-const outputFolder = path.join(__dirname, '../FuentesDeDatos');
-csvToJson(csvFilePath, outputFolder);  // Llamamos a la función para convertir el CSV a JSON
-//module.exports = { csvToJson };  // Exportamos la función en caso de que la necesitemos en otro archivo
-
-async function valencia(){
+ 
+async function valencia() {
   try {
-    // Leer archivo JSON
     const filepath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural.json');
-    const data = await fs.readFile(filepath, 'utf8');
-
-    // Parsear el contenido como JSON
+    const data = await fs.promises.readFile(filepath, 'utf8');
+   
     const jsonData = JSON.parse(data);
-
-    // Iterar sobre los monumentos y esperar que se complete cada operación
-    for (const monumento of jsonData){
+    const primerosCuatro = jsonData.slice(0,4);
+ 
+    for (const monumento of primerosCuatro) {
       await guardarEnBD(monumento);
     }
 
     console.log('Todos los monumentos han sido procesados.');
+    console.log('Monumentos insetados correctamente: ', insertadas_correctamente)
+    console.log('Monumentos corregidos: ', insertadas_corregidas)
+    console.log('Monumentos descartados: ', descartadas)
+
   } catch (err) {
-    console.error('Error procesando los monumentos: ', err);
+    console.error('Error procesando los monumentos:', err);
   }
 }
-
+ 
 async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -69,7 +67,11 @@ async function guardarEnBD(monumento) {
 
       const {latitud, longitud} = await obtenerCoordenadas(monumento);
 
-      const codigoPostal = latitud && longitud ? await await obtenerCodigoPostal(latitud, longitud) : 'Código postal no disponible';
+      //Saca el código postal según las coordenadas y lo verifica
+      let codigoPostal = latitud && longitud ? await await obtenerCodigoPostal(latitud, longitud) : 'Código postal no disponible';
+
+      codigoPostal = validarCodigoPostal(codigoPostal, monumento.provincia);
+
       //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
       const { error: error1} = await supabase
               .from('Provincia')
@@ -84,26 +86,22 @@ async function guardarEnBD(monumento) {
       //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
       const{ error: error2} = await supabase  
           .from('Localidad')
-          .insert([
-              { nombre: monumento.municipo, en_provincia: monumento.en_provincia },
-            ])
-            .select()
-      if(error2){
-          console.error('Error guardando la localidad:',error2);
-      }
-
-      //Insertar Monumento 
-      const{ error: error3} = await supabase  
+          .insert([{ nombre: monumento.MUNICIPIO, en_provincia: monumento.PROVINCIA }]);
+      if (error2) console.error('Error guardando la localidad:', error2);
+ 
+      // Insertar monumento
+      const tipo = determinarTipo(monumento.DENOMINACION || '');
+      const { error: error3 } = await supabase
           .from('Monumento')
           .insert([
-              { nombre: monumento.denominacion,
-                tipo: determinarTipo(monumento.denominacion),
-                direccion : direccion || 'Dirección no disponible',
-                descripcion : 'Monumento en la localidad de ${monumento.municipio}', 
-                latitud: parseFloat(monumento.UTMNORTE)|| null ,
-                longitud: parseFloat(monumento.UTMESTE) || null,
-                codigo_postal: codigoPostal,  
-                en_localidad: monumento.municipo,
+              {
+                  nombre: monumento.DENOMINACION || 'Nombre desconocido',
+                  tipo,
+                  direccion: coordenadas.direccion || 'Dirección no disponible',
+                  latitud: parseFloat(coordenadas.latitud) || null,
+                  longitud: parseFloat(coordenadas.longitud) || null,
+                  codigo_postal: coordenadas.codigoPostal || 'Código postal no disponible',
+                  en_localidad: monumento.MUNICIPIO,
               },
             ])
             .select()
@@ -129,9 +127,8 @@ async function guardarEnBD(monumento) {
  if(lowername.includes('puente') ) return 'Puente';
  return 'otros';
 }
-
-// Función para obtener la dirección con Selenium
-async function  obtenerCoordenadas(monumento) {
+ 
+async function obtenerCoordenadas(monumento) {
   let driver;
   try{
     driver = await new Builder().forBrowser('chrome').build();
@@ -206,6 +203,30 @@ async function obtenerCodigoPostal(latitud, longitud){
 
 }
 
+function validarCodigoPostal(codigoPostal, provincia) {
+  // Verifica si el código postal es nulo o indefinido
+  if (!codigoPostal) {
+    console.error("Error: Código postal no disponible.");
+    return null;
+  }
+
+  // Elimina espacios extra por si acaso
+  codigoPostal = codigoPostal.toString().trim();
+
+  // Si la provincia es Alicante y el código postal tiene 4 dígitos, añade un 0 al inicio
+  if (provincia.toUpperCase() === "ALICANTE" && codigoPostal.length === 4) {
+    return "0" + codigoPostal;
+  }
+
+  // Comprueba que todos los códigos postales tengan 5 dígitos
+  if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
+    console.error('Error: El código postal ${codigoPostal}" es incorrecto para la provincia "${provincia}.');
+    return null;
+  }
+
+  // Devuelve el código postal válido
+  return codigoPostal;
+}
 
 
 valencia();

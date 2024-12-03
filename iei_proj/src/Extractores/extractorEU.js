@@ -88,23 +88,28 @@ async function guardarEnBD(monumento) {
         direccionFinal = monumento.firstAddress
 
         let correcto = await verificarProvincia()
-        if(!correcto){
+        if (!correcto) {
             return
         }
 
         correcto = await verificarMunicipio()
-        if(!correcto){
+        if (!correcto) {
             return
         }
 
+        correcto = await verificarCodigoPostal()
+        if (!correcto) {
+            return
+        }
+        
         correcto = await verificarMonumento()
-        if(!correcto){
+        if (!correcto) {
             return
         }
 
-        if(modificado){
+        if (modificado) {
             insertadas_corregidas++
-        }else{insertadas_correctamente++}
+        } else {insertadas_correctamente++}
         console.log(municipio)
         //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
         const { data: provin, error: error1} = await supabase
@@ -179,6 +184,15 @@ async function verificarMunicipio(){
     }
     return true
 }
+
+async function verificarCodigoPostal() {
+    // Comprueba que todos los códigos postales tengan 5 dígitos
+    if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
+      descartadas++
+      return false
+    }
+    return true;
+  }
 
 async function verificarMonumento() {
     if (nombreMonumento == "") {
