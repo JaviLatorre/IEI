@@ -1,9 +1,9 @@
 // fuente de datos monumentos
-const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
+const { SUPABASE_URL, SUPABASE_KEY } = require('../credencialesSupaBase');
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
 
-const fs = require('fs');  // Importamos el módulo 'fs' para poder trabajar con archivos (leer y escribir)
-const path = require('path');  // Importamos el módulo 'path' para trabajar con rutas de archivos de forma flexible
+const fs = require('fs').promises;  // Usamos la versión Promesa de 'fs' para trabajar con async/await
+const path = require('path');
 const xml2js = require('xml2js');  // Importamos el módulo 'xml2js' para convertir archivos XML a JSON
 
 let insertadas_correctamente = 0;
@@ -13,115 +13,91 @@ let modificado = false;
 
 let provincia = "";
 
+// Función para convertir XML a JSON de manera asíncrona
+async function xmlToJson(xmlFilePath, outputFolder) {
+  const parser = new xml2js.Parser({ explicitArray: false, mergeAttrs: false });
 
-function xmlToJson(xmlFilePath, outputFolder) {
-  const parser = new xml2js.Parser({ explicitArray: false, mergeAttrs: false });  // Ajusta la configuración del parser
-
-  fs.readFile(xmlFilePath, 'utf-8', (err, data) => {
-    if (err) {
-      console.error(`Error al leer el archivo XML: ${err}`);
-      return;
-    }
-
-    parser.parseString(data, (err, result) => {
+  try {
+    const data = await fs.readFile(xmlFilePath, 'utf-8');  // Leemos el archivo XML
+    parser.parseString(data, async (err, result) => {  // Parseamos el contenido del archivo XML
       if (err) {
         console.error(`Error al parsear el XML: ${err}`);
         return;
       }
-
-      // Imprime el JSON para verificar su contenido
-      //console.log(JSON.stringify(result, null, 2));
 
       // Genera la ruta de salida y verifica si la carpeta existe
       const jsonFileName = path.basename(xmlFilePath, path.extname(xmlFilePath)) + '.json';
       const outputFilePath = path.join(outputFolder, jsonFileName);
 
       // Asegúrate de que la carpeta de salida exista
-      if (!fs.existsSync(outputFolder)) {
-        fs.mkdirSync(outputFolder, { recursive: true });
+      if (!fs.access(outputFolder)) {
+        await fs.mkdir(outputFolder, { recursive: true });
       }
 
-      // Guarda el JSON resultante
-      fs.writeFileSync(outputFilePath, JSON.stringify(result, null, 2), 'utf-8');
+      // Guarda el JSON resultante de manera asíncrona
+      await fs.writeFile(outputFilePath, JSON.stringify(result, null, 2), 'utf-8');
       console.log(`Archivo JSON guardado en: ${outputFilePath}`);
     });
-  });
-}
-
-
-// Si este archivo se ejecuta directamente, convertimos el archivo XML especificado a JSON
-const xmlFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.xml');  // Especificamos la ruta del archivo XML
-const outputFolder = path.join(__dirname, '../FuentesDeDatos');  // Especificamos la carpeta donde se guardará el archivo JSON
-xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la conversión
-
-async function castillayleon(){
-  try {
-    // Leer archivo JSON
-    const jsonFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.json');
-
-    try {
-      console.time('Tiempo de ejecución');
-  
-      // Leer archivo JSON generado
-      const data = await fs.readFile(jsonFilePath, 'utf8', (err, data) => {
-        if (err) throw err;
-        //console.log(data);
-      });
-      
-  
-      // Parsear contenido JSON
-      const jsonData = JSON.parse(data);
-      
-      // Asegurarse de que la estructura es correcta y contiene los monumentos
-      const monumentos = jsonData?.root?.monumento || [];
-      
-      if (monumentos.length === 0) {
-        console.log('No se encontraron monumentos en el archivo JSON.');
-        return;
-      }
-
-      // Limitar a los primeros 5 monumentos
-      const primerosCincoMonumentos = monumentos.slice(0, 5);
-
-      // Iterar solo sobre los primeros 5 monumentos
-      for (const monumento of primerosCincoMonumentos) {
-        console.log(`Procesando monumento: ${monumento.denominacion}`);
-        await guardarEnBD(monumento);
-      }
-  
-      // // Iterar sobre los monumentos e insertarlos en la base de datos
-      // for (const monumento of monumentos) {
-      //   await guardarEnBD(monumento);
-      // }
-  
-      console.timeEnd('Tiempo de ejecución');
-  
-      console.log('Todos los monumentos han sido procesados.');
-      console.log('Monumentos insertados correctamente:', insertadas_correctamente);
-      console.log('Monumentos corregidos:', insertadas_corregidas);
-    } catch (err) {
-      console.error('Error procesando el archivo JSON:', err);
-    }
-  }catch (err) {
-    console.error('Error procesando llamando a castillayLeon function:', err);
+  } catch (err) {
+    console.error(`Error al leer el archivo XML: ${err}`);
   }
 }
 
+// Si este archivo se ejecuta directamente, convertimos el archivo XML especificado a JSON
+const xmlFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.xml');
+const outputFolder = path.join(__dirname, '../FuentesDeDatos');
+xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la conversión
+
+// Función principal para procesar el archivo JSON
+async function castillayleon() {
+  try {
+    // Leer archivo JSON de manera asíncrona
+    const jsonFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.json');
+    console.time('Tiempo de ejecución');
+
+    const data = await fs.readFile(jsonFilePath, 'utf8');  // Leemos el archivo JSON
+    const jsonData = JSON.parse(data);  // Parseamos el JSON
+
+    // Asegurarse de que la estructura es correcta y contiene los monumentos
+    const monumentos = jsonData?.monumentos?.monumento || [];
+
+
+    if (monumentos.length === 0) {
+      console.log('No se encontraron monumentos en el archivo JSON.');
+      return;
+    }
+
+    // Limitar a los primeros 5 monumentos
+    const primerosCincoMonumentos = monumentos.slice(0, 5);
+
+    // Iterar solo sobre los primeros 5 monumentos
+    for (const monumento of primerosCincoMonumentos) {
+      console.log(`Procesando monumento: ${monumento.denominacion}`);
+      await guardarEnBD(monumento);
+    }
+
+    console.timeEnd('Tiempo de ejecución');
+    console.log('Todos los monumentos han sido procesados.');
+    console.log('Monumentos insertados correctamente:', insertadas_correctamente);
+    console.log('Monumentos corregidos:', insertadas_corregidas);
+  } catch (err) {
+    console.error('Error procesando el archivo JSON:', err);
+  }
+}
+
+// Función para guardar el monumento en la base de datos
 async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
   provincia = monumento.territory;
   municipio = monumento.municipality;
 
-  //console.log(`Verificando provincia: ${provincia}`);
   let correcto = await verificarProvincia();
   if (!correcto) return;
 
-  //console.log(`Verificando municipio: ${municipio}`);
   correcto = await verificarMunicipio();
   if (!correcto) return;
 
-  //console.log(`Verificando monumento: ${monumento.denominacion}`);
   correcto = await verificarMonumento();
   if (!correcto) return;
 
@@ -132,7 +108,7 @@ async function guardarEnBD(monumento) {
   }
 
   try {
-    // Depuración: Log de los datos que se van a insertar
+    // Insertar provincia, municipio y monumento
     console.log(`Insertando provincia: ${provincia}`);
     console.log(`Insertando municipio: ${municipio}`);
     console.log(`Insertando monumento: ${monumento.denominacion}`);
@@ -178,85 +154,77 @@ async function guardarEnBD(monumento) {
     } else {
       console.log('Monumento insertado correctamente');
     }
-
   } catch (err) {
     console.error('Error guardando en BD', err);
   }
 }
 
+// Función para determinar el tipo de monumento
+function determinarTipo(denominacion) {
+  const lowername = denominacion.toLowerCase();
 
-
-
-function determinarTipo(denominacion){
- const lowername = denominacion.toLowerCase();
-
- if(lowername.includes('yacimiento')) return 'yacimiento arqueológico';
- if(lowername.includes('iglesia') || lowername.includes('ermita') || lowername.includes('catedral') || lowername.includes('sinagoga')) return 'Iglesia-Ermita';
- if(lowername.includes('monasterio') || lowername.includes('convento') || lowername.includes('santuario')) return 'Monasterio-Convento';
- if(lowername.includes('castillo') || lowername.includes('palacio') || lowername.includes('torre') || lowername.includes('muralla') || lowername.includes('puerta')) return 'Castillo-Fortaleza-Torre';
- if(lowername.includes('casa consistorial') || lowername.includes('casa noble') || lowername.includes('real sitio')  || lowername.includes('sitio histórico')) return 'Iglesia-Ermita';
- if(lowername.includes('puente') ) return 'Puente';
- return 'otros';
+  if (lowername.includes('yacimiento')) return 'yacimiento arqueológico';
+  if (lowername.includes('iglesia') || lowername.includes('ermita') || lowername.includes('catedral') || lowername.includes('sinagoga')) return 'Iglesia-Ermita';
+  if (lowername.includes('monasterio') || lowername.includes('convento') || lowername.includes('santuario')) return 'Monasterio-Convento';
+  if (lowername.includes('castillo') || lowername.includes('palacio') || lowername.includes('torre') || lowername.includes('muralla') || lowername.includes('puerta')) return 'Castillo-Fortaleza-Torre';
+  if (lowername.includes('casa consistorial') || lowername.includes('casa noble') || lowername.includes('real sitio') || lowername.includes('sitio histórico')) return 'Iglesia-Ermita';
+  if (lowername.includes('puente')) return 'Puente';
+  return 'otros';
 }
 
+// Función para validar el código postal
 function validarCodigoPostal(codigoPostal, provincia) {
-  // Verifica si el código postal es nulo o indefinido
   if (!codigoPostal) {
     console.error("Error: Código postal no disponible.");
     return null;
   }
 
-  // Elimina espacios extra por si acaso
   codigoPostal = codigoPostal.toString().trim();
 
-  // Si la provincia es Ávila o Burgos y el código postal tiene 4 dígitos, añade un 0 al inicio
-  if (provincia.toUpperCase() === "AVILA" || provincia.toUpperCase() === "BURGOS" && codigoPostal.length === 4) {
+  if ((provincia.toUpperCase() === "AVILA" || provincia.toUpperCase() === "BURGOS") && codigoPostal.length === 4) {
     return "0" + codigoPostal;
   }
 
-  // Comprueba que todos los códigos postales tengan 5 dígitos
   if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
-    console.error('Error: El código postal ${codigoPostal}" es incorrecto para la provincia "${provincia}.');
+    console.error(`Error: El código postal ${codigoPostal} es incorrecto para la provincia ${provincia}.`);
     return null;
   }
 
-  // Devuelve el código postal válido
   return codigoPostal;
 }
 
-async function verificarProvincia(){
-  if(provincia == ""){
-      descartadas++
-      return false
+// Función para verificar la provincia
+async function verificarProvincia() {
+  if (provincia === "") {
+    descartadas++;
+    return false;
+  } else if (!["León", "Palencia", "Burgos", "Zamora", "Valladolid", "Soria", "Segovia", "Salamanca", "Ávila"].includes(provincia)) {
+    descartadas++;
+    return false;
   }
-  else if (provincia != "León" && provincia != "Palencia" && provincia != "Burgos" && provincia != "Zamora"
-    && provincia != "Valladolid" && provincia != "Soria" && provincia != "Segovia" && provincia != "Salamanca" && provincia != "Ávila"
-  ){
-      descartadas++
-      return false
-  }
-  return true
+  return true;
 }
 
-async function verificarMunicipio(){
-  if(municipio == ""){
-      descartadas++
-      return false
+// Función para verificar el municipio
+async function verificarMunicipio() {
+  if (municipio === "") {
+    descartadas++;
+    return false;
+  } else if (municipio.includes('/')) {
+    const textoAntes = municipio.split('/')[0];
+    municipio = textoAntes;
+    modificado = true;
+    return true;
   }
-  else if(municipio.includes('/')){
-      const textoAntes = municipio.split('/')[0];
-      municipio = textoAntes
-      modificado = true
-      return true
-  }
-  return true
+  return true;
 }
 
+// Función para verificar el monumento
 async function verificarMonumento() {
   if (monumento == null) {
-      descartadas++
-      return false
-  } 
+    descartadas++;
+    return false;
+  }
 }
 
 module.exports = { xmlToJson };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
