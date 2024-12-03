@@ -114,7 +114,8 @@ async function guardarEnBD(monumento) {
   municipio = monumento.poblacion.municipio;
   longitud = monumento.coordenadas.longitud;
   latitud = monumento.coordenadas.latitud;
-  codigoPostal = monumento.codigoPostal
+  codigoPostal = monumento.codigoPostal;
+  modificado=false;
 
 
   let correcto = await verificarProvincia();
@@ -267,6 +268,11 @@ async function verificarMonumento(monumento) {
   } else if (nombresProcesados.includes(nombreMonumento)) {
     descartadas++;
     return false;
+  }else if (!/^[0-9.-]+$/.test(longitud)) {  // Validar longitud
+    console.log(`Longitud inválida: "${longitud}". Se modifica.`);
+    longitud = longitud.replace(/#/g, "");
+    modificado=true;
+    return true;
   }
   return true;
 }
