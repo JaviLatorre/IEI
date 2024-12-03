@@ -109,6 +109,9 @@ async function guardarEnBD(monumento) {
 
   provincia = monumento.poblacion.provincia;
   municipio = monumento.poblacion.municipio;
+  longitud = monumento.coordenadas.longitud;
+  latitud = monumento.coordenadas.latitud;
+
 
   let correcto = await verificarProvincia();
   if (!correcto) return;
@@ -245,9 +248,12 @@ async function verificarMunicipio() {
 
 // Función para verificar el monumento
 async function verificarMonumento(monumento) {
-  if (monumento == null) {
+  if (monumento === null) {
     descartadas++;
     return false;
+  } else if (longitud === "" || latitud === "") {
+    descartadas++;
+    return false
   }
   return true;
 }
