@@ -159,6 +159,8 @@ async function obtenerCoordenadas(monumento) {
     const latitud = await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[2]/div[2]/div[2]/div[1]/input")).getAttribute('value');
     const longitud = await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[1]/div[2]/div[2]/div[1]/input")).getAttribute('value');
 
+    console.log(latitud)
+    console.log(longitud)
     return{
         latitud: parseFloat(latitud),
         longitud: parseFloat(longitud),
@@ -188,7 +190,10 @@ async function obtenerCodigoPostal(latitud, longitud){
 
     await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[1]/div/div/form/div/input")).sendKeys(`${latitud} ${longitud}`)
 
-    const codigoPostal = await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[2]/div/div[2]/div/div[2]/span")).getText();
+    await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[1]/div/div/form/button")).click()
+
+    const codigoPostal = await driver.findElement(By.xpath("/html/body/section[2]/div/div/div/div[1]/div/div[2]/p[6]/code")).getText();
+    console.log(codigoPostal)
 
     return codigoPostal || 'Código postal no disponible';
 
