@@ -215,7 +215,7 @@ function validarCodigoPostal(codigoPostal, provincia) {
     return null;
   }
 
-  console.log(codigopostal);
+  
   if(codigoPostal == 'Código postal no disponible') return codigoPostal
   // Elimina espacios extra por si acaso
   codigoPostal = codigoPostal.toString().trim();
