@@ -52,99 +52,103 @@ xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la c
 async function castillayleon(){
   try {
     // Leer archivo JSON
-    const filepath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.xml');
-    const data = await fs.readFile(filepath, 'utf8');
+    const jsonFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.json');
 
-    // Parsear el contenido como JSON
-    const jsonData = JSON.parse(data);
-
-    // Iterar sobre los monumentos y esperar que se complete cada operación
-    for (const monumento of jsonData){
-      await guardarEnBD(monumento);
+    try {
+      console.time('Tiempo de ejecución');
+  
+      // Leer archivo JSON generado
+      const data = await fs.readFile(jsonFilePath, 'utf8', (err, data) => {
+        if (err) throw err;
+        console.log(data);
+      });
+      
+  
+      // Parsear contenido JSON
+      const jsonData = JSON.parse(data);
+      
+      // Asegurarse de que la estructura es correcta y contiene los monumentos
+      const monumentos = jsonData?.root?.monumento || [];
+      
+      if (monumentos.length === 0) {
+        console.log('No se encontraron monumentos en el archivo JSON.');
+        return;
+      }
+  
+      // Iterar sobre los monumentos e insertarlos en la base de datos
+      for (const monumento of monumentos) {
+        await guardarEnBD(monumento);
+      }
+  
+      console.timeEnd('Tiempo de ejecución');
+  
+      console.log('Todos los monumentos han sido procesados.');
+      console.log('Monumentos insertados correctamente:', insertadas_correctamente);
+      console.log('Monumentos corregidos:', insertadas_corregidas);
+    } catch (err) {
+      console.error('Error procesando el archivo JSON:', err);
     }
-    console.timeEnd('Tiempo de ejecución');
-
-    console.log('Todos los monumentos han sido procesados.');
-    console.log('Monumentos insetados correctamente: ', insertadas_correctamente)
-    console.log('Monumentos corregidos: ', insertadas_corregidas)
-    console.log('Todos los monumentos han sido procesados.');
-  } catch (err) {
-    console.error('Error: ', err);
+  }catch (err) {
+    console.error('Error procesando llamando a castillayLeon function:', err);
   }
 }
 
 async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-        modificado = false
-        provincia = monumento.territory
-        municipio = monumento.municipality
-        codigoPostal = monumento.postalCode
-    let correcto = await verificarProvincia()
-      if (!correcto) {
-          return
-      }
 
-      correcto = await verificarMunicipio()
-      if (!correcto) {
-          return
-      }
-        
-      correcto = await verificarMonumento()
-      if (!correcto) { 
-           return
-      }
+  provincia = monumento.territory;
+  municipio = monumento.municipality;
 
-      if (modificado){
-        insertadas_corregidas++
-      } else {insertadas_correctamente++}
-      console.log(municipio)
+  let correcto = await verificarProvincia();
+  if (!correcto) return;
+
+  correcto = await verificarMunicipio();
+  if (!correcto) return;
+
+  correcto = await verificarMonumento();
+  if (!correcto) return;
+
+  if (modificado) {
+    insertadas_corregidas++;
+  } else {
+    insertadas_correctamente++;
+  }
 
   try {
-      //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
-      const { error: error1} = await supabase
-          .from('Provincia')
-          .insert([
-          { nombre: monumento.provincia},
-          ])
-          .select()
-      if(error1){
-        console.error('Error guardando la procvincia:', error1);
-      }
+    // Insertar provincia
+    const { data: provData, error: provError } = await supabase
+      .from('Provincia')
+      .select('*')
+      .eq('nombre', provincia)
+      .single();
 
-      //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
-      const{ error: error2} = await supabase  
-        .from('Localidad')
-        .insert([
-            { nombre: monumento.municipo, en_provincia: monumento.en_provincia },
-          ])
-          .select()
-      if(error2){
-        console.error('Error guardando el municipio:', error2);
-      }
+    if (!provData) {
+      await supabase.from('Provincia').insert([{ nombre: provincia }]);
+    }
 
-      //Insertar Monumento 
-      const{ error: error3} = await supabase  
-        .from('Monumento')
-        .insert([
-            { nombre: monumento.denominacion,
-              tipo: determinarTipo(monumento.denominacion),
-              direccion : monumento.direccion,
-              descripcion : monumento.descripcion, 
-              latitud: monumento.latitud,
-              longitud: monumento.longitud,
-              codigo_postal: validarCodigoPostal(monumento.codigo_postal, monumento.provincia),
-              en_localidad: monumento.municipo,
-            },
-          ])
-          .select()
-        if(error3){
-          console.error('Error guardando el municipio:', error3);
-        }
-      } catch(err){
-        console.error('Error guardando en BD', err)
+    // Insertar municipio
+    await supabase.from('Localidad').insert([
+      { nombre: municipio, en_provincia: provincia }
+    ]);
+
+    // Insertar monumento
+    await supabase.from('Monumento').insert([
+      {
+        nombre: monumento.denominacion,
+        tipo: determinarTipo(monumento.denominacion),
+        direccion: monumento.direccion,
+        descripcion: monumento.descripcion,
+        latitud: monumento.latitud,
+        longitud: monumento.longitud,
+        codigo_postal: validarCodigoPostal(monumento.postalCode, provincia),
+        en_localidad: municipio
       }
-      
+    ]);
+  } catch (err) {
+    console.error('Error guardando en BD', err);
+  }
 }
+
 
 function determinarTipo(denominacion){
  const lowername = denominacion.toLowerCase();
