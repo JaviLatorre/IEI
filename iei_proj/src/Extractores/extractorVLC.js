@@ -8,6 +8,12 @@ const csv = require('csv-parser');
 const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
 
+let insertadas_correctamente = 0;
+let insertadas_corregidas = 0;
+let descartadas = 0;
+let modificado = false;
+
+let provincia = "";
 
 function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que convertirá el CSV a JSON
   const results = [];  // Creamos un array vacío donde almacenaremos los resultados (cada fila del CSV)
@@ -55,8 +61,13 @@ async function valencia(){
     for (const monumento of jsonData){
       await guardarEnBD(monumento);
     }
-
+    console.timeEnd('Tiempo de ejecución');
+    
     console.log('Todos los monumentos han sido procesados.');
+    console.log('Monumentos insetados correctamente: ', insertadas_correctamente)
+    console.log('Monumentos corregidos: ', insertadas_corregidas)
+    console.log('Monumentos descartados: ', descartadas)
+
   } catch (err) {
     console.error('Error procesando los monumentos: ', err);
   }
@@ -64,6 +75,29 @@ async function valencia(){
 
 async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    modificado = false
+    provincia = monumento.provincia
+    municipio = monumento.municipio
+    
+    let correcto = await verificarProvincia()
+        if (!correcto) {
+            return
+        }
+
+        correcto = await verificarMunicipio()
+        if (!correcto) {
+            return
+        }
+        
+        correcto = await verificarMonumento()
+        if (!correcto) {
+            return
+        }
+
+        if (modificado){
+            insertadas_corregidas++
+        } else {insertadas_correctamente++}
+        console.log(municipio)
 
     try{
 
@@ -123,15 +157,15 @@ async function guardarEnBD(monumento) {
 }
 
  function determinarTipo(denominacion){
- const lowername = denominacion.toLowerCase();
+  const lowername = denominacion.toLowerCase();
 
- if(lowername.includes('yacimiento')) return 'yacimiento arqueológico';
- if(lowername.includes('iglesia') || lowername.includes('ermita')) return 'Iglesia-Ermita';
- if(lowername.includes('monasterio') || lowername.includes('convento')) return 'Monasterio-Convento';
- if(lowername.includes('castillo') || lowername.includes('fortaleza') || lowername.includes('torre')) return 'Castillo-Fortaleza-Torre';
- if(lowername.includes('palacio') || lowername.includes('casa') || lowername.includes('teatro')  || lowername.includes('ayuntamiento')) return 'Iglesia-Ermita';
- if(lowername.includes('puente') ) return 'Puente';
- return 'otros';
+  if(lowername.includes('yacimiento')) return 'yacimiento arqueológico';
+  if(lowername.includes('iglesia') || lowername.includes('ermita')) return 'Iglesia-Ermita';
+  if(lowername.includes('monasterio') || lowername.includes('convento')) return 'Monasterio-Convento';
+  if(lowername.includes('castillo') || lowername.includes('fortaleza') || lowername.includes('torre')) return 'Castillo-Fortaleza-Torre';
+  if(lowername.includes('palacio') || lowername.includes('casa') || lowername.includes('teatro')  || lowername.includes('ayuntamiento')) return 'Iglesia-Ermita';
+  if(lowername.includes('puente') ) return 'Puente';
+  return 'otros';
 }
 
 // Función para obtener la dirección con Selenium
@@ -161,52 +195,45 @@ async function  obtenerCoordenadas(monumento) {
 
     };
 
-  }catch(err){
+   }catch(err) {
 
     console.error('Error obteniendo coordenadas', err);
     return {latitud: null, longitud: null}; 
-  }finally{
-    if( driver) await driver.quit();
-
+  } finally {
+    if(driver) await driver.quit();
   }
 
-
-  
 }
 
 async function obtenerCodigoPostal(latitud, longitud){
- let driver; 
- try{
-    driver = await new Builder().forBrowser('chrome').build();
+  let driver; 
+  try {
+      driver = await new Builder().forBrowser('chrome').build();
 
-    await driver.get('https://www.gps-coordinates.net/');
+      await driver.get('https://www.gps-coordinates.net/');
 
-    const latInput = await driver.findElement(By.id('latitude'));
-    const lngInput = await driver.findElement(By.id('longitude'));
+      const latInput = await driver.findElement(By.id('latitude'));
+      const lngInput = await driver.findElement(By.id('longitude'));
 
-    await latInput.sendKeys(latitud.toString());
-    await lngInput.sendKeys(longitud.toString());
+      await latInput.sendKeys(latitud.toString());
+      await lngInput.sendKeys(longitud.toString());
 
-    const searchButton = await driver.findElement(By.xpath("//button[contains(text(), 'Get Address')]"));
-    await searchButton.click();
-
-   
-    await driver.sleep(3000);
-
+      const searchButton = await driver.findElement(By.xpath("//button[contains(text(), 'Get Address')]"));
+      await searchButton.click();
     
-    const postalCodeElement = await driver.findElement(By.xpath("//span[@id='postal']"));
-    const codigoPostal = await postalCodeElement.getText();
+      await driver.sleep(3000);
 
-    return codigoPostal || 'Código postal no disponible';
+      const postalCodeElement = await driver.findElement(By.xpath("//span[@id='postal']"));
+      const codigoPostal = await postalCodeElement.getText();
 
- }catch(err){
-      console.log('Error obteniendo el código postal:',err);
-      return 'Código postal no disponible';
- }finally{
-      if(driver) await driver.quit();
+      return codigoPostal || 'Código postal no disponible';
 
- }
-
+  } catch (err) {
+        console.log('Error obteniendo el código postal:',err);
+        return 'Código postal no disponible';
+  } finally{
+        if (driver) await driver.quit();
+  }
 
 }
 
@@ -235,5 +262,30 @@ function validarCodigoPostal(codigoPostal, provincia) {
   return codigoPostal;
 }
 
+async function verificarMunicipio(){
+  if(municipio == ""){
+      descartadas++
+      return false
+  }
+  else if(municipio.includes('/')){
+      const textoAntes = municipio.split('/')[0];
+      municipio = textoAntes
+      modificado = true
+      return true
+  }
+  return true
+}
+
+async function verificarProvincia(){
+  if(provincia == ""){
+      descartadas++
+      return false
+  }
+  else if (provincia != "VALENCIA" && provincia != "CASTELLÓN" && provincia != 'ALICANTE') {
+      descartadas++
+      return false
+  }
+  return true
+}
 
 valencia();

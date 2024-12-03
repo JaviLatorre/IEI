@@ -74,28 +74,28 @@ async function guardarEnBD(monumento) {
         nombre = monumento.documentName
 
         let correcto = await verificarProvincia()
-        if(!correcto){
+        if (!correcto) {
             return
         }
 
         correcto = await verificarMunicipio()
-        if(!correcto){
+        if (!correcto) {
             return
         }
 
         correcto = await verificarCodigoPostal()
-        if(!correcto){
+        if (!correcto) {
             return
         }
         
         correcto = await verificarMonumento()
-        if(!correcto){
+        if (!correcto) {
             return
         }
 
-        if(modificado){
+        if (modificado) {
             insertadas_corregidas++
-        }else{insertadas_correctamente++}
+        } else {insertadas_correctamente++}
         console.log(municipio)
         //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
         /*const { data: provin, error: error1} = await supabase

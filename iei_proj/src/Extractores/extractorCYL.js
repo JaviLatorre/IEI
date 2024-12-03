@@ -5,6 +5,14 @@ const fs = require('fs');  // Importamos el módulo 'fs' para poder trabajar con
 const path = require('path');  // Importamos el módulo 'path' para trabajar con rutas de archivos de forma flexible
 const xml2js = require('xml2js');  // Importamos el módulo 'xml2js' para convertir archivos XML a JSON
 
+let insertadas_correctamente = 0;
+let insertadas_corregidas = 0;
+let descartadas = 0;
+let modificado = false;
+
+let provincia = "";
+
+
 function xmlToJson(xmlFilePath, outputFolder) {  // Definimos la función que convierte XML a JSON
   const parser = new xml2js.Parser({ explicitArray: false, mergeAttrs: true });  // Creamos un parser que nos ayudará a convertir el XML a JSON
 
@@ -43,7 +51,8 @@ xmlToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la c
 async function castillayleon(){
   try {
     // Leer archivo JSON
-    const data = await fs.readFile('C:\Users\javier\IEI\iei_proj\src\FuentesDeDatos\monumentos.json',utf8);
+    const filepath = path.join(__dirname, '../FuentesDeDatos', 'monumentos.xml');
+    const data = await fs.readFile(filepath, 'utf8');
 
     // Parsear el contenido como JSON
     const jsonData = JSON.parse(data);
@@ -52,7 +61,11 @@ async function castillayleon(){
     for (const monumento of jsonData){
       await guardarEnBD(monumento);
     }
+    console.timeEnd('Tiempo de ejecución');
 
+    console.log('Todos los monumentos han sido procesados.');
+    console.log('Monumentos insetados correctamente: ', insertadas_correctamente)
+    console.log('Monumentos corregidos: ', insertadas_corregidas)
     console.log('Todos los monumentos han sido procesados.');
   } catch (err) {
     console.error('Error: ', err);
@@ -61,6 +74,30 @@ async function castillayleon(){
 
 async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        modificado = false
+        provincia = monumento.territory
+        municipio = monumento.municipality
+        codigoPostal = monumento.postalCode
+    let correcto = await verificarProvincia()
+      if (!correcto) {
+          return
+      }
+
+      correcto = await verificarMunicipio()
+      if (!correcto) {
+          return
+      }
+        
+      correcto = await verificarMonumento()
+      if (!correcto) { 
+           return
+      }
+
+      if (modificado){
+        insertadas_corregidas++
+      } else {insertadas_correctamente++}
+      console.log(municipio)
+
   try {
       //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
       const { error: error1} = await supabase
@@ -143,6 +180,41 @@ function validarCodigoPostal(codigoPostal, provincia) {
 
   // Devuelve el código postal válido
   return codigoPostal;
+}
+
+async function verificarProvincia(){
+  if(provincia == ""){
+      descartadas++
+      return false
+  }
+  else if (provincia != "León" && provincia != "Palencia" && provincia != "Burgos" && provincia != "Zamora"
+    && provincia != "Valladolid" && provincia != "Soria" && provincia != "Segovia" && provincia != "Salamanca" && provincia != "Ávila"
+  ){
+      descartadas++
+      return false
+  }
+  return true
+}
+
+async function verificarMunicipio(){
+  if(municipio == ""){
+      descartadas++
+      return false
+  }
+  else if(municipio.includes('/')){
+      const textoAntes = municipio.split('/')[0];
+      municipio = textoAntes
+      modificado = true
+      return true
+  }
+  return true
+}
+
+async function verificarMonumento() {
+  if (monumento == null) {
+      descartadas++
+      return false
+  } 
 }
 
 module.exports = { xmlToJson };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
