@@ -41,7 +41,7 @@ function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que c
  
 async function valencia() {
   try {
-    const filepath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural.json');
+    const filepath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural(Entrega 1).json');
     const data = await fs.promises.readFile(filepath, 'utf8');
    
     const jsonData = JSON.parse(data);
