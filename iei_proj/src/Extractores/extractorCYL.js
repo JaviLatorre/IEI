@@ -37,7 +37,7 @@ async function xmlToJson(xmlFilePath, outputFolder) {
 
       // Guarda el JSON resultante de manera asíncrona
       await fs.writeFile(outputFilePath, JSON.stringify(result, null, 2), 'utf-8');
-      console.log(`Archivo JSON guardado en: ${outputFilePath}`);
+      //console.log(`Archivo JSON guardado en: ${outputFilePath}`);
     });
   } catch (err) {
     console.error(`Error al leer el archivo XML: ${err}`);
@@ -83,7 +83,7 @@ async function castillayleon() {
 
       // Iterar solo sobre los primeros 5 monumentos
       for (const monumento of monumentos) {
-        console.log('Monumento completo:', monumento); // Imprimir todo el objeto de cada monumento
+        //console.log('Monumento completo:', monumento); // Imprimir todo el objeto de cada monumento
         await guardarEnBD(monumento);
         monumentosProcesados++; // Aumentar el contador cada vez que se procesa un monumento
       }
@@ -93,7 +93,7 @@ async function castillayleon() {
       console.log('Monumentos insertados correctamente:', insertadas_correctamente);
       console.log('Monumentos corregidos:', insertadas_corregidas);
       console.log('Monumentos descartados:', descartadas);
-      console.log(nombresProcesados);
+      //console.log(nombresProcesados);
     } catch (err) {
       console.error('Error procesando el archivo JSON:', err);
     }
@@ -106,13 +106,13 @@ async function castillayleon() {
 
 // Función para guardar el monumento en la base de datos
 async function guardarEnBD(monumento) {
-  console.log('guardando monumento');
+  //console.log('guardando monumento');
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
   provincia = monumento.poblacion.provincia;
   nombreMonumento=monumento.nombre;
   municipio = monumento.poblacion.municipio;
-  longitud = monumento.coordenadas.longitud;
+  longitudFinal = monumento.coordenadas.longitud;
   latitud = monumento.coordenadas.latitud;
   codigoPostal = monumento.codigoPostal;
   modificado=false;
@@ -134,9 +134,9 @@ async function guardarEnBD(monumento) {
   
   try {
     // Insertar provincia, municipio y monumento
-    console.log(`Insertando provincia: ${provincia}`);
-    console.log(`Insertando municipio: ${municipio}`);
-    console.log(`Insertando monumento: ${monumento.nombre}`);
+    // console.log(`Insertando provincia: ${provincia}`);
+    // console.log(`Insertando municipio: ${municipio}`);
+    // console.log(`Insertando monumento: ${monumento.nombre}`);
 
     // Insertar provincia
     const { error: error1 } = await supabase
@@ -146,7 +146,7 @@ async function guardarEnBD(monumento) {
     if (error1) {
       console.error('Error al insertar la provincia:', error1.message);
     } else {
-      console.log('Provincia insertada correctamente');
+      //console.log('Provincia insertada correctamente');
     }
 
     // Insertar municipio
@@ -157,7 +157,7 @@ async function guardarEnBD(monumento) {
     if (error2) {
       console.error('Error al insertar el municipio:', error2.message);
     } else {
-      console.log('Municipio insertado correctamente');
+      //console.log('Municipio insertado correctamente');
     }
 
     // Insertar monumento
@@ -169,7 +169,7 @@ async function guardarEnBD(monumento) {
         direccion: determinarDireccion(monumento.calle),
         descripcion: limpiarDescripcion(monumento.Descripcion),
         latitud: monumento.coordenadas.latitud,
-        longitud: monumento.coordenadas.longitud,
+        longitud: longitudFinal,
         codigo_postal: validarCodigoPostal(monumento.codigoPostal, provincia),
         en_localidad: municipio
       }]);
@@ -177,7 +177,7 @@ async function guardarEnBD(monumento) {
     if (error3) {
       console.error('Error al insertar el monumento:', error3.message);
     } else {
-      console.log('Monumento insertado correctamente');
+      //console.log('Monumento insertado correctamente');
     }
   } catch (err) {
     console.error('Error guardando en BD', err);
@@ -259,7 +259,7 @@ async function verificarMonumento(monumento) {
   if (monumento === null) {
     descartadas++;
     return false;
-  } else if (longitud === "" || latitud === "") {
+  } else if (longitudFinal === "" || latitud === "") {
     descartadas++;
     return false
   } else if (codigoPostal === null || codigoPostal === "" || 'codigoPostal' in monumento === false) {
@@ -268,16 +268,13 @@ async function verificarMonumento(monumento) {
   } else if (nombresProcesados.includes(nombreMonumento)) {
     descartadas++;
     return false;
-  }else if (!/^[0-9.-]+$/.test(longitud)) {  // Validar longitud
-    console.log(`Longitud inválida: "${longitud}". Se modifica.`);
-    longitud = longitud.replace(/#/g, "");
+  } else if (!/^[0-9.-]+$/.test(longitudFinal)) {  // Validar longitud
+    console.log(`Longitud inválida: "${longitudFinal}". Se modifica.`);
+    longitudFinal = longitudFinal.replace(/#/g, "");
     modificado=true;
     return true;
   }
   return true;
 }
-
-
-castillayleon()
 
 module.exports = { xmlToJson, castillayleon };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
