@@ -9,6 +9,7 @@ const csv = require('csv-parser');
 
 const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
+const { get } = require('http');
 
 let insertadas_correctamente = 0;
 let insertadas_corregidas = 0;
@@ -323,5 +324,16 @@ function validarCodigoPostal(codigoPostal, provincia) {
   return codigoPostal;
 }
 
+function getInsertadasCorrectamenteVLC() {
+  return insertadas_correctamente;
+}
 
-valencia();
+function getModificadosVLC() {
+  return insertadas_corregidas;
+}
+
+function getDescartadosVLC() {
+  return descartadas;
+}
+
+module.exports = {valencia, getInsertadasCorrectamenteVLC, getModificadosVLC, getDescartadosVLC}

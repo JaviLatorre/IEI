@@ -216,4 +216,16 @@ async function verificarMonumento() {
     return true
 }
 
-module.exports = { euskadi };
+function getInsertadasCorrectamenteEU() {
+    return insertadas_correctamente;
+}
+
+function getModificadosEU() {
+    return insertadas_corregidas;
+}
+
+function getDescartadosEU() {
+    return descartadas;
+}
+
+module.exports = { euskadi, getInsertadasCorrectamenteEU, getModificadosEU, getDescartadosEU };

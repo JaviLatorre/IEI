@@ -277,4 +277,16 @@ async function verificarMonumento(monumento) {
   return true;
 }
 
-module.exports = { xmlToJson, castillayleon };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
+function getInsertadasCorrectamenteCYL() {
+  return insertadas_correctamente;
+}
+
+function getModificadosCYL() {
+  return insertadas_corregidas;
+}
+
+function getDescartadosCYL() {
+  return descartadas;
+}
+
+module.exports = { xmlToJson, castillayleon, getInsertadasCorrectamenteCYL, getModificadosCYL, getDescartadosCYL };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
