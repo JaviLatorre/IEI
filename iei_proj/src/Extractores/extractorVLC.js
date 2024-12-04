@@ -271,6 +271,14 @@ async function obtenerCodigoPostal(latitud, longitud){
 
     await driver.findElement(By.xpath("/html/body/div/div[2]/div[2]/div[2]/div[2]/button[1]")).click()
 
+    await driver.findElement(By.xpath("/html/body/header/div[1]/div/div[3]/a")).click()
+
+    await driver.findElement(By.xpath("/html/body/section/div/div/div[1]/form/div[2]/div[1]/input")).sendKeys("oscarsegui03@gmail.com")
+
+    await driver.findElement(By.xpath("/html/body/section/div/div/div[1]/form/div[2]/div[2]/div[1]/input")).sendKeys("ninjablod1")
+
+    await driver.findElement(By.xpath("/html/body/section/div/div/div[1]/form/div[2]/div[5]/input")).click()
+
     await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[1]/div/div/form/div/input")).sendKeys(`${latitud} ${longitud}`)
 
     await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[1]/div/div/form/button")).click()
