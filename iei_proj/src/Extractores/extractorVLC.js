@@ -47,7 +47,7 @@ async function valencia() {
     const jsonData = JSON.parse(data);
     const primerosCuatro = jsonData.slice(0,4);
  
-    for (const monumento of primerosCuatro) {
+    for (const monumento of jsonData) {
       await guardarEnBD(monumento);
     }
 
@@ -66,28 +66,64 @@ async function guardarEnBD(monumento) {
 
     try{
 
+      provincia = monumento.PROVINCIA
+
+      let correcto = await verificarProvincia()
+        if (!correcto) {
+            return
+        }
+      
+      municipio = monumento.MUNICIPIO
+      correcto = await verificarMunicipio(municipio)
+        if (!correcto) {
+            return
+        }
+        
+      correcto = await verificarNombre(monumento.DENOMINACION)
+        if (!correcto) {
+            return
+        }
+
+      correcto = await verificarCoordenadas(monumento.UTMNORTE, monumento.UTMESTE)
+        if (!correcto) {
+            return
+        }
+
+      // Obtén las coordenadas
       const coordenadas = await obtenerCoordenadas(monumento);
+      const latitud = coordenadas.latitud;
+      const longitud = coordenadas.longitud;
+      console.log(latitud)
+      console.log(longitud)
+ 
+      // Verifica si las coordenadas son válidas antes de continuar
+      if (!latitud || !longitud) {
+        console.log(`Coordenadas no disponibles para el monumento: ${monumento.DENOMINACION}`);
+        descartadas++;
+        return;
+      }
 
-      //Saca el código postal según las coordenadas y lo verifica
-      let codigoPostal = coordenadas.latitud && coordenadas.longitud ? await await obtenerCodigoPostal(latitud, longitud) : 'Código postal no disponible';
-
-      codigoPostal = validarCodigoPostal(codigoPostal, monumento.PROVINCIA);
+      // Obtén el código postal según las coordenadas
+      let res = await obtenerCodigoPostal(latitud, longitud);
+      let codPost = res.codigoPostal
+      let direccion = res.direccion
+      codigoPostal = validarCodigoPostal(codPost, monumento.PROVINCIA);
 
       //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
       const { error: error1} = await supabase
               .from('Provincia')
               .insert([
-              { nombre: monumento.PROVINCIA},
+              { nombre: provincia},
               ])
                .select()
       if(error1){
-        console.error('Error guardando la procvincia:',error1);
+        console.error('Error guardando la provincia:',error1);
       }
       
       //Guardar en SupaBase el municipio donde se encuentra el monumento (si aún no está guardada)
       const{ error: error2} = await supabase  
           .from('Localidad')
-          .insert([{ nombre: monumento.MUNICIPIO, en_provincia: monumento.PROVINCIA }]);
+          .insert([{ nombre: monumento.MUNICIPIO, en_provincia: provincia }]);
       if (error2) console.error('Error guardando la localidad:', error2);
  
       // Insertar monumento
@@ -98,35 +134,83 @@ async function guardarEnBD(monumento) {
               {
                   nombre: monumento.DENOMINACION || 'Nombre desconocido',
                   tipo,
-                  direccion: coordenadas.direccion || 'Dirección no disponible',
-                  latitud: parseFloat(coordenadas.latitud) || null,
-                  longitud: parseFloat(coordenadas.longitud) || null,
-                  codigo_postal: coordenadas.codigoPostal || 'Código postal no disponible',
+                  direccion: direccion || 'Dirección no disponible',
+                  latitud: latitud,
+                  longitud: longitud,
+                  codigo_postal: codigoPostal || 'Código postal no disponible',
                   en_localidad: monumento.MUNICIPIO,
+                  descripcion: `Monumento en la localidad de ${monumento.MUNICIPIO}`
               },
             ])
             .select()
       if(error3){
           console.error('Error guardando el municipio:',error3);
+      }else{
+        if(modificado){insertadas_corregidas++}
+        else{insertadas_correctamente++}
       }
 
     }catch(err){
         console.error('Error guardando en BD', err);
+        descartadas++
 
     }
 
 }
 
+async function verificarProvincia(){
+  if(provincia == ""){
+      descartadas++
+      return false
+  }
+  else if(provincia ==="CASTELLON"){
+    provincia = "CASTELLÓN"
+    modificado = true
+    return true
+  }
+  else if (provincia!= "ALICANTE" && provincia != "CASTELLÓN" && provincia != "VALENCIA"){
+      descartadas++
+      return false
+  }
+  return true
+}
+
+async function verificarMunicipio(municipio){
+  if(municipio == ""){
+      descartadas++
+      return false
+  } else{
+    return true
+  }
+}
+
+async function verificarNombre(nombre) {
+  if(nombre == ""){
+    descartadas++
+    return false
+  } else{
+  return true
+  }
+}
+
+async function verificarCoordenadas(UTMNORTE, UTMESTE) {
+  if(UTMNORTE == "" || UTMESTE == ""){
+    descartadas++
+    return false
+  } else{
+    return true
+  }
+}
  function determinarTipo(denominacion){
  const lowername = denominacion.toLowerCase();
 
- if(lowername.includes('yacimiento')) return 'yacimiento arqueológico';
+ if(lowername.includes('yacimiento')) return 'Yacimiento Arqueológico';
  if(lowername.includes('iglesia') || lowername.includes('ermita')) return 'Iglesia-Ermita';
  if(lowername.includes('monasterio') || lowername.includes('convento')) return 'Monasterio-Convento';
  if(lowername.includes('castillo') || lowername.includes('fortaleza') || lowername.includes('torre')) return 'Castillo-Fortaleza-Torre';
- if(lowername.includes('palacio') || lowername.includes('casa') || lowername.includes('teatro')  || lowername.includes('ayuntamiento')) return 'Iglesia-Ermita';
+ if(lowername.includes('palacio') || lowername.includes('casa') || lowername.includes('teatro')  || lowername.includes('ayuntamiento')) return 'Edificio singular';
  if(lowername.includes('puente') ) return 'Puente';
- return 'otros';
+ return 'Otros';
 }
  
 async function obtenerCoordenadas(monumento) {
@@ -159,8 +243,6 @@ async function obtenerCoordenadas(monumento) {
     const latitud = await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[2]/div[2]/div[2]/div[1]/input")).getAttribute('value');
     const longitud = await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[1]/div[2]/div[2]/div[1]/input")).getAttribute('value');
 
-    console.log(latitud)
-    console.log(longitud)
     return{
         latitud: parseFloat(latitud),
         longitud: parseFloat(longitud),
@@ -193,9 +275,14 @@ async function obtenerCodigoPostal(latitud, longitud){
     await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[1]/div/div/form/button")).click()
 
     const codigoPostal = await driver.findElement(By.xpath("/html/body/section[2]/div/div/div/div[1]/div/div[2]/p[6]/code")).getText();
+    const direccion = await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[2]/div/div[2]/div/div[2]/span")).getText();
     console.log(codigoPostal)
+    console.log(direccion)
 
-    return codigoPostal || 'Código postal no disponible';
+    return{
+      codigoPostal: codigoPostal || 'Código postal no disponible',
+      direccion: direccion
+    } 
 
  }catch(err){
       console.log('Error obteniendo el código postal:',err);
