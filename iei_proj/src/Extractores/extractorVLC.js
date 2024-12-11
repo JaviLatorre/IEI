@@ -17,32 +17,6 @@ let descartadas = 0;
 let modificado = false;
 
 let provincia = "";
-
-function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que convertirá el CSV a JSON
-  const results = [];  // Creamos un array vacío donde almacenaremos los resultados (cada fila del CSV)
-
-  // Abrimos el archivo CSV y le indicamos que el delimitador es el punto y coma (';')
-  fs.createReadStream(csvFilePath)
-    .pipe(csv({ separator: ';' }))
-    .on('data', (data) => {
-      for (const key in data) {
-        if (data.hasOwnProperty(key)) {
-          data[key] = data[key].replace(/"/g, '').trim();
-        }
-      }
-      results.push(data);
-    })
-    .on('end', () => {
-      const jsonFileName = path.basename(csvFilePath, path.extname(csvFilePath)) + '.json';
-      const outputFilePath = path.join(outputFolder, jsonFileName);
-      fs.writeFileSync(outputFilePath, JSON.stringify(results, null, 2), 'utf-8');
-      console.log(`Archivo JSON guardado en: ${outputFilePath}`);
-    });
-}
-
-const xmlFilePath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural(Entrega 1).csv');
-const outputFolder = path.join(__dirname, '../FuentesDeDatos');
-csvToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la conversión
  
 async function valencia() {
   try {
