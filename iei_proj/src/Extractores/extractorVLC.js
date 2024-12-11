@@ -39,6 +39,10 @@ function csvToJson(csvFilePath, outputFolder) {  // Definimos una función que c
       console.log(`Archivo JSON guardado en: ${outputFilePath}`);
     });
 }
+
+const xmlFilePath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural(Entrega 1).csv');
+const outputFolder = path.join(__dirname, '../FuentesDeDatos');
+csvToJson(xmlFilePath, outputFolder);  // Llamamos a la función para hacer la conversión
  
 async function valencia() {
   try {
@@ -343,5 +347,7 @@ function getModificadosVLC() {
 function getDescartadosVLC() {
   return descartadas;
 }
+
+valencia()
 
 module.exports = {valencia, getInsertadasCorrectamenteVLC, getModificadosVLC, getDescartadosVLC}

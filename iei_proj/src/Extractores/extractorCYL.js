@@ -289,4 +289,6 @@ function getDescartadosCYL() {
   return descartadas;
 }
 
+castillayleon()
+
 module.exports = { xmlToJson, castillayleon, getInsertadasCorrectamenteCYL, getModificadosCYL, getDescartadosCYL };  // Exportamos la función para que pueda ser utilizada en otros archivos si es necesario
