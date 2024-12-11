@@ -3,7 +3,7 @@ class WrapperCyL {
     constructor(filePath) {
         this.filePath = filePath;
     }
-
+    
     loadFile() {
         return new Promise((resolve, reject) => {
             fs.readFile(this.filePath, 'utf-8', (err, data) => {
