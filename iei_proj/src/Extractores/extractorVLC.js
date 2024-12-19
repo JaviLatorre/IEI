@@ -1,6 +1,7 @@
 //fuente de datos bienes_inmuebles
 const fs = require('fs');  
 const path = require('path');  
+const axios = require('axios');
 
 const {Builder , By} = require('selenium-webdriver');
 const { Select } = require('selenium-webdriver/lib/select');
@@ -15,6 +16,7 @@ let insertadas_correctamente = 0;
 let insertadas_corregidas = 0;
 let descartadas = 0;
 let modificado = false;
+const apiKey = 'AIzaSyD0LXYibe50Cav5v9mcH0ec0IT4YBUaAgQ';
 
 let provincia = "";
  
@@ -241,44 +243,29 @@ async function obtenerCoordenadas(monumento) {
 }
 
 async function obtenerCodigoPostal(latitud, longitud){
- let driver; 
- try{
-    driver = await new Builder().forBrowser('chrome').build();
-
-    await driver.get('https://www.geocords.com');
-
-    await driver.findElement(By.xpath("/html/body/div/div[2]/div[2]/div[2]/div[2]/button[1]")).click()
-
-    await driver.findElement(By.xpath("/html/body/header/div[1]/div/div[3]/a")).click()
-
-    await driver.findElement(By.xpath("/html/body/section/div/div/div[1]/form/div[2]/div[1]/input")).sendKeys("oscarsegui03@gmail.com")
-
-    await driver.findElement(By.xpath("/html/body/section/div/div/div[1]/form/div[2]/div[2]/div[1]/input")).sendKeys("ninjablod1")
-
-    await driver.findElement(By.xpath("/html/body/section/div/div/div[1]/form/div[2]/div[5]/input")).click()
-
-    await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[1]/div/div/form/div/input")).sendKeys(`${latitud} ${longitud}`)
-
-    await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[1]/div/div/form/button")).click()
-
-    const codigoPostal = await driver.findElement(By.xpath("/html/body/section[2]/div/div/div/div[1]/div/div[2]/p[6]/code")).getText();
-    const direccion = await driver.findElement(By.xpath("/html/body/section[1]/div/div/div/div[2]/div/div[2]/div/div[2]/span")).getText();
-    console.log(codigoPostal)
-    console.log(direccion)
-
-    return{
-      codigoPostal: codigoPostal || 'Código postal no disponible',
-      direccion: direccion
-    } 
-
- }catch(err){
-      console.log('Error obteniendo el código postal:',err);
-      return 'Código postal no disponible';
- }finally{
-      if(driver) await driver.quit();
-
- }
-
+ try {
+       // Primera solicitud para postal_code
+       const postalCodeResponse = await axios.get(
+         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitud},${longitud}&result_type=postal_code&key=${apiKey}`
+       );
+       const postalAddress = postalCodeResponse.data.results[0].formatted_address;
+       const postalCodeMatch = postalAddress.match(/^\d{5}/);
+       const codigoPostal = postalCodeMatch ? postalCodeMatch[0] : 'Código postal no encontrado';
+       console.log(codigoPostal)
+   
+       // Segunda solicitud para street_address
+       const streetAddressResponse = await axios.get(
+         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitud},${longitud}&result_type=street_address&key=${apiKey}`
+       );
+       const direccion = streetAddressResponse.data.results[0].formatted_address;
+       console.log(direccion)
+       return{
+         codigoPostal: codigoPostal || 'Código postal no disponible',
+         direccion: direccion
+       } 
+     } catch (error) {
+       console.error('Error en la solicitud:', error.response?.data || error.message);
+     }
 
 }
 
