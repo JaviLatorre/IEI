@@ -12,38 +12,25 @@ let modificado = false;
 
 let provincia = "";
 
-// Función para consumir la API y guardar los datos en la base de datos
-/*const extraerDatos = async () => {
-    (async () => {
-        const fetch = (await import('node-fetch')).default //Usamos una importación dinámica para este módulo porque es un modulo ESM y el proyecto usa CommonJS, así 
-                                                           //lo podemos importar y no se queja.
-
+// Función para consumir la API y devolver el archivo de datos en JSON
+async function extraerDatos(){
+    const fetch = (await import('node-fetch')).default //Usamos una importación dinámica para este módulo porque es un modulo ESM y el proyecto usa CommonJS, así 
+                                                        //lo podemos importar y no se queja.
+    
     try {
         // Consumir la API
         const response = await fetch('http://localhost:3000/EuskadiAPI');
         const data = await response.json();
-        
-        const primerosCuatro = data.slice(0, 4);
-
-        // Iterar sobre los monumentos y esperar a que se complete cada operación
-        console.time('Tiempo de ejecución');
-        for (const monumento of data) {
-            await guardarEnBD(monumento);
-        }
-        console.timeEnd('Tiempo de ejecución');
-
-        console.log('Datos guardados exitosamente en la base de datos.');
+        return data
     } catch (error) {
         console.error('Error extrayendo y guardando datos:', error);
     } 
-
-    })(); //Aquí temina la importación dinámica
-};*/
+} 
 
 async function euskadi(){
     try {
-        // Leer archivo JSON
-        const data = await fs.readFile('../FuentesDeDatos/edificiosProfe.json', 'utf-8');
+
+        const data = await extraerDatos()
 
         const updatedData = data.replace(/"address"\s:\s"([^"]*)"/g, (match, p1, offset, string) => {
             // Verificar si este es el primer "address" dentro de su bloque JSON

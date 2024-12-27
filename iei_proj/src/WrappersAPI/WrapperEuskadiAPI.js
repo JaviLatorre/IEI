@@ -6,7 +6,7 @@ const app = express();
 const PORT = 3000;
 
 // Instancia del wrapper con el archivo JSON
-const wrapper = new WrapperEuskadi('../FuentesDeDatos/edificiosProfe.json', 'utf-8');
+const wrapper = new WrapperEuskadi('../FuentesDeDatos/edificiosProfe.json');
 
 // Endpoint para obtener los datos del JSON
 app.get('/EuskadiAPI', async (req, res) => {
