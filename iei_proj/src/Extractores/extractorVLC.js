@@ -4,9 +4,7 @@ const path = require('path');
 const axios = require('axios');
 
 const {Builder , By} = require('selenium-webdriver');
-const { Select } = require('selenium-webdriver/lib/select');
-
-const csv = require('csv-parser');  
+const { Select } = require('selenium-webdriver/lib/select'); 
 
 const {SUPABASE_URL, SUPABASE_KEY} = require('../credencialesSupaBase')
 const { createClient, SupabaseClient } = require('@supabase/supabase-js');
@@ -19,13 +17,28 @@ let modificado = false;
 const apiKey = 'AIzaSyD0LXYibe50Cav5v9mcH0ec0IT4YBUaAgQ';
 
 let provincia = "";
+
+// Función para consumir la API y devolver el archivo de datos en JSON
+async function extraerDatos(){
+  const fetch = (await import('node-fetch')).default //Usamos una importación dinámica para este módulo porque es un modulo ESM y el proyecto usa CommonJS, así 
+                                                      //lo podemos importar y no se queja.
+  
+  try {
+      // Consumir la API
+      const response = await fetch('http://localhost:3000/CVAPI');
+      const data = await response.json();
+      return data
+  } catch (error) {
+      console.error('Error extrayendo y guardando datos:', error);
+  } 
+} 
  
 async function valencia() {
   try {
-    const filepath = path.join(__dirname, '../FuentesDeDatos', 'bienes_inmuebles_interes_cultural(Entrega 1).json');
-    const data = await fs.promises.readFile(filepath, 'utf8');
+    const data = await extraerDatos()
+    //console.log(data)
    
-    const jsonData = JSON.parse(data);
+    /*const jsonData = JSON.parse(data);
     const primerosCuatro = jsonData.slice(0,4);
  
     for (const monumento of jsonData) {
@@ -35,7 +48,7 @@ async function valencia() {
     console.log('Todos los monumentos han sido procesados.');
     console.log('Monumentos insetados correctamente: ', insertadas_correctamente)
     console.log('Monumentos corregidos: ', insertadas_corregidas)
-    console.log('Monumentos descartados: ', descartadas)
+    console.log('Monumentos descartados: ', descartadas)*/
 
   } catch (err) {
     console.error('Error procesando los monumentos:', err);
