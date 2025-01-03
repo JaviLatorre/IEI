@@ -3,7 +3,8 @@ const WrapperEuskadi = require('../Wrappers/WrapperEuskadi');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+//app.use(express.json());
+const port = 3000;
 
 // Instancia del wrapper con el archivo JSON
 const wrapper = new WrapperEuskadi('../FuentesDeDatos/edificiosProfe.json');
@@ -19,6 +20,6 @@ app.get('/EuskadiAPI', async (req, res) => {
 });
 
 // Iniciar el servidor
-app.listen(PORT, () => {
-    console.log(`API corriendo en http://localhost:${PORT}`);
+app.listen(port, () => {
+    console.log(`API corriendo en http://localhost:${port}`);
 });

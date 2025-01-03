@@ -25,7 +25,7 @@ async function extraerDatos(){
   
   try {
       // Consumir la API
-      const response = await fetch('http://localhost:3000/CVAPI');
+      const response = await fetch('http://localhost:3001/CVAPI');
       const data = await response.json();
       return data
   } catch (error) {
@@ -36,9 +36,9 @@ async function extraerDatos(){
 async function valencia() {
   try {
     const data = await extraerDatos()
-    //console.log(data)
+    console.log(data)
    
-    /*const jsonData = JSON.parse(data);
+    const jsonData = JSON.parse(data);
     const primerosCuatro = jsonData.slice(0,4);
  
     for (const monumento of jsonData) {
@@ -48,7 +48,7 @@ async function valencia() {
     console.log('Todos los monumentos han sido procesados.');
     console.log('Monumentos insetados correctamente: ', insertadas_correctamente)
     console.log('Monumentos corregidos: ', insertadas_corregidas)
-    console.log('Monumentos descartados: ', descartadas)*/
+    console.log('Monumentos descartados: ', descartadas)
 
   } catch (err) {
     console.error('Error procesando los monumentos:', err);
