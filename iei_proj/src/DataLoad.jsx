@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "./index.css"; // Archivo de estilos para personalización
+import "./index.css";
 
 const DataLoad = () => {
   const [selectedSources, setSelectedSources] = useState({
@@ -60,7 +60,7 @@ const DataLoad = () => {
   };
 
   return (
-    <div className="data-load-container">
+    <div className="load-form">
       <h2>Carga del almacén de datos</h2>
       <div className="data-source-selection">
         <h3>Seleccione fuente:</h3>
@@ -72,7 +72,7 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Seleccionar todas
-        </label>
+        </label> <br/>
         <label>
           <input
             type="checkbox"
@@ -81,7 +81,7 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Castilla y León
-        </label>
+        </label> <br/>
         <label>
           <input
             type="checkbox"
@@ -90,7 +90,7 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Comunitat Valenciana
-        </label>
+        </label> <br/>
         <label>
           <input
             type="checkbox"
@@ -99,12 +99,12 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Euskadi
-        </label>
+        </label> 
       </div>
       <div className="data-load-buttons">
-        <button onClick={handleLoadData} className="load-button">Cargar</button>
-        <button onClick={handleClearData} className="clear-button">Borrar almacén de datos</button>
-        <button className="cancel-button">Cancelar</button>
+        <button type="button" className="cancel2-button">Cancelar</button>
+        <button onClick={handleLoadData} type="button" className="load-button">Cargar</button>
+        <button onClick={handleClearData} type="button" className="reset-button">Borrar almacén de datos</button>
       </div>
       <div className="data-load-results">
         <h3>Resultados de la carga:</h3>

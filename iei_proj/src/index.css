@@ -46,15 +46,67 @@ body {
   border-radius: 4px;
 }
 
+
+.load-form {
+  margin-left: 30%;
+  margin-right: 30%;
+  margin-top: 10%;
+  width: 40%;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.load-form h2 {
+  font-size: 1.5em;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.load-form label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.load-form input, 
+.load-form select {
+  width: 5%;
+  margin-bottom: 1%;
+  margin-left: 25%;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
 .button-group {
   display: flex;
   justify-content: space-between;
 }
 
 .cancel-button,
-.search-button {
+.search-button, .reset-button, .load-button{
+  margin-top: 7%;
   padding: 10px 15px;
   border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  margin-right: 5%;
+  margin-bottom: 5%;
+}
+
+.load-button {
+  background-color: #9b9b9b;
+  color: white;
+}
+
+.cancel2-button{
+  margin-left: 26%;
+  background-color: white;
+  color: #2986cc;
+  border-color: #2986cc;
+  padding: 10px 15px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 1em;
@@ -68,6 +120,11 @@ body {
 
 .search-button {
   background-color: #4caf50;
+  color: white;
+}
+
+.reset-button {
+  background-color: #c90076;
   color: white;
 }
 
