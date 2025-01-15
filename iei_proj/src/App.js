@@ -1,24 +1,33 @@
-import logo from './logo.svg';
-import './App.css';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+
+// Importa los componentes
+import Busqueda from "./Busqueda";
+import DataLoad from "./DataLoad";
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <div>
+        {/* Barra de navegación */}
+        <nav>
+          <ul>
+            <li>
+              <Link to="/search">Busqueda</Link>
+            </li>
+            <li>
+              <Link to="/data-load">Data Load</Link>
+            </li>
+          </ul>
+        </nav>
+
+        {/* Define las rutas */}
+        <Routes>
+          <Route path="/search" element={<Busqueda />} />
+          <Route path="/data-load" element={<DataLoad />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

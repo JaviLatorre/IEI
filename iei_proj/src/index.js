@@ -8,7 +8,7 @@ import Busqueda from './Busqueda';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <Busqueda />
+    <App />
   </React.StrictMode>
 );
 
