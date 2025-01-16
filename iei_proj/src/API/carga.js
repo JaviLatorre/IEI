@@ -1,20 +1,20 @@
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 
-const { castillayleon } = require('./extractores/castillayleon');
-const { euskadi } = require('./extractores/euskadi');
-const { valencia } = require('./extractores/valencia');
-const {eliminarBD } = require('./DAL');
+const { castillayleon } = require('../Extractores/extractorCYL');
+const { euskadi } = require('../Extractores/extractorEU');
+const { valencia } = require('../Extractores/extractorVLC');
+const {eliminarBD } = require('../Extractores/DAL');
 const { SUPABASE_URL, SUPABASE_KEY } = require('../credencialesSupaBase');
 
 const app = express();
-const port = 3004;
+const PORT = 3004;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 app.use(express.json());
 
-app.get('/api/borrar-datos', async (req, res) => {
+app.delete('/api/borrar-datos', async (req, res) => {
     try {
         console.log('Eliminando los datos de todas las tablas...');
         await eliminarBD();
@@ -122,5 +122,9 @@ app.get('/api/extractores', (req, res) => {
         return res.status(500).json({ message: 'Error interno en la API de carga.', error: error.message });
     }
 
+   
+
   });
-    
+   
+   //Inicializar el servidor 
+   app.listen(PORT, () => {console.log(`API corriendo en httpd://localhost:${PORT}^`)});
