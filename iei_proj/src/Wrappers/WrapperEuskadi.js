@@ -14,7 +14,13 @@ class WrapperEuskadi {
                     reject(`Error reading file: ${err}`);
                 } else {
                     try {
-                        const jsonData = JSON.parse(data);
+                        const updatedData = data.replace(/"address"\s:\s"([^"]*)"/g, (match, p1, offset, string) => {
+                            // Verificar si este es el primer "address" dentro de su bloque JSON
+                            const before = string.slice(0, offset); // Texto antes de este match
+                            const isFirstAddress = before.lastIndexOf('{') > before.lastIndexOf('"address"');
+                            return isFirstAddress ? `"firstAddress": "${p1}"` : match;
+                        });
+                        const jsonData = JSON.parse(updatedData);
                         resolve(jsonData);
                     } catch (parseError) {
                         reject(`Error parsing JSON: ${parseError}`);
