@@ -11,9 +11,10 @@ const SearchForm = ({ onSearch }) => {
   });
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFilters({
       ...filters,
-      [e.target.name]: e.target.value,
+      [name]: value.toLowerCase(),
     });
   };
 
