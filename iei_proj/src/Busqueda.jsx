@@ -20,7 +20,7 @@ const Busqueda = () => {
       console.log(queryParams);
 
       // Realiza la petición a la API (reemplaza la URL con tu endpoint real)
-      const response = await fetch(`http://localhost:3005/API/busqueda.js?${queryParams}`);
+      const response = await fetch(`http://localhost:3005/API/busqueda.js?${queryParams}`, {mode:'no-cors'});
 
       if (!response.ok) {
         throw new Error(`Error en la API: ${response.statusText}`);

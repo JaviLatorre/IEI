@@ -16,6 +16,7 @@ app.use(express.json());
 
 
 app.get('/API/busqueda.js', async (req, res) =>{
+    console.log('Consulta:');
     try {
         // Extraer datos del filtro de la solicitud
         const consulta = {
