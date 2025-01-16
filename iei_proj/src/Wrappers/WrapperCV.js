@@ -1,63 +1,58 @@
-const fs = require('fs'); //Para acceder al file system
+const fs = require('fs');
 const path = require('path');
-const csv = require('csv-parser'); 
-let updatedPath;
+const csv = require('csv-parser');
 
 class WrapperCV {
-    
     constructor(filePath) {
-        this.filePath = filePath;
+        this.filePath = path.resolve(filePath); // Convertimos a una ruta absoluta
+        this.outputFolder = path.join(__dirname, '../FuentesDeDatos');
+        this.jsonFilePath = ''; // Ruta donde se guardará el JSON
     }
 
     async loadFile() {
-        
+        try {
+            // Convertir CSV a JSON
+            await this.csvToJson(this.filePath, this.outputFolder);
+
+            // Leer el archivo JSON convertido
+            const data = await fs.promises.readFile(this.jsonFilePath, 'utf-8');
+            return JSON.parse(data); // Convertir a objeto
+        } catch (error) {
+            throw new Error(`Error en loadFile: ${error.message}`);
+        }
+    }
+
+    async csvToJson(csvFilePath, outputFolder) {
         return new Promise((resolve, reject) => {
-            const csvFilePath = this.filePath;
-            const outputFolder = path.join(__dirname, '../FuentesDeDatos');
-            csvToJson(csvFilePath, outputFolder);  // Llamamos a la función para hacer la conversión
-            console.log(this.filePath)
-            fs.readFile(this.filePath, 'utf-8', (err, data) => {
-                if (err) {
-                    reject(`Error reading file: ${err}`);
-                } else {
-                    try {
-                        const jsonData = JSON.parse(data);
-                        resolve(jsonData);
-                    } catch (parseError) {
-                        reject(`Error parsing JSON: ${parseError}`);
+            const results = [];
+            const jsonFileName = path.basename(csvFilePath, path.extname(csvFilePath)) + '.json';
+            this.jsonFilePath = path.join(outputFolder, jsonFileName);
+
+            fs.createReadStream(csvFilePath)
+                .pipe(csv({ separator: ';' }))
+                .on('data', (data) => {
+                    for (const key in data) {
+                        if (data.hasOwnProperty(key)) {
+                            data[key] = data[key].replace(/"/g, '').trim(); // Limpiar valores
+                        }
                     }
-                }
-            });
+                    results.push(data);
+                })
+                .on('end', () => {
+                    try {
+                        // Escribir el archivo JSON
+                        fs.writeFileSync(this.jsonFilePath, JSON.stringify(results, null, 2), 'utf-8');
+                        console.log(`Archivo JSON guardado en: ${this.jsonFilePath}`);
+                        resolve(); // Resolvemos la promesa
+                    } catch (writeError) {
+                        reject(`Error escribiendo JSON: ${writeError}`);
+                    }
+                })
+                .on('error', (err) => {
+                    reject(`Error procesando CSV: ${err}`);
+                });
         });
     }
-
-    getFilePath() {
-        return this.filePath;
-    }
-
-    async csvToJson(csvFilePath, outputFolder) {  // Definimos una función que convertirá el CSV a JSON
-        const results = [];  // Creamos un array vacío donde almacenaremos los resultados (cada fila del CSV)
-      
-        // Abrimos el archivo CSV y le indicamos que el delimitador es el punto y coma (';')
-
-        fs.createReadStream(csvFilePath)
-          .pipe(csv({ separator: ';' }))
-          .on('data', (data) => {
-            for (const key in data) {
-              if (data.hasOwnProperty(key)) {
-                data[key] = data[key].replace(/"/g, '').trim();
-              }
-            }
-            results.push(data);
-          })
-          .on('end', () => {
-            const jsonFileName = path.basename(csvFilePath, path.extname(csvFilePath)) + '.json';
-            const outputFilePath = path.join(outputFolder, jsonFileName);
-            this.filePath = outputFilePath;
-            fs.writeFileSync(outputFilePath, JSON.stringify(results, null, 2), 'utf-8');
-            console.log(`Archivo JSON guardado en: ${outputFilePath}`);
-          });
-      }
 }
 
 module.exports = WrapperCV;

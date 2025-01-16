@@ -38,10 +38,10 @@ async function valencia() {
     const data = await extraerDatos()
     console.log(data)
    
-    const jsonData = JSON.parse(data);
-    const primerosCuatro = jsonData.slice(0,4);
+    //const jsonData = JSON.parse(data);
+    //const primerosCuatro = jsonData.slice(0,4);
  
-    for (const monumento of jsonData) {
+    for (const monumento of data) {
       await guardarEnBD(monumento);
     }
 
