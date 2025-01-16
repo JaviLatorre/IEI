@@ -31,17 +31,6 @@ const Busqueda = () => {
       // Otros resultados simulados...
     ];
 
-    // Filtrar los resultados según los filtros
-    const filteredResults = dummyResults.filter((result) => {
-      return (
-        (filters.localidad === "" || result.localidad.toLowerCase().includes(filters.localidad.toLowerCase())) &&
-        (filters.codPostal === "" || result.codPostal === filters.codPostal) &&
-        (filters.provincia === "" || result.provincia.toLowerCase().includes(filters.provincia.toLowerCase())) &&
-        (filters.tipo === "" || result.tipo === filters.tipo)
-      );
-    });
-
-    setSearchResults(filteredResults);
   };
 
   return (
