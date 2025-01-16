@@ -1,10 +1,10 @@
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 
-const { castillayleon } = require('../Extractores/extractorCYL');
-const { euskadi } = require('../Extractores/extractorEU');
-const { valencia } = require('../Extractores/extractorVLC');
-const {eliminarBD } = require('../Extractores/DAL');
+const { castillayleon, getInsertadasCorrectamenteCYL, getModificadosCYL, getDescartadosCYL } = require('../Extractores/extractorCYL');
+const { euskadi, getInsertadasCorrectamenteEU, getModificadosEU, getDescartadosEU } = require('../Extractores/extractorEU');
+const { valencia, getInsertadasCorrectamenteVLC, getModificadosVLC, getDescartadosVLC } = require('../Extractores/extractorVLC');
+const { eliminarBD } = require('../Extractores/DAL');
 const { SUPABASE_URL, SUPABASE_KEY } = require('../credencialesSupaBase');
 
 const app = express();
@@ -14,6 +14,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 app.use(express.json());
 
+// Endpoint para borrar los datos
 app.delete('/api/borrar-datos', async (req, res) => {
     try {
         console.log('Eliminando los datos de todas las tablas...');
@@ -26,16 +27,21 @@ app.delete('/api/borrar-datos', async (req, res) => {
 });
 
 
-
-app.get('/api/extractores', (req, res) => {
+app.get('/api/extractores', async (req, res) => {
+    const { fuente } = req.query; 
     const extractoresDisponibles = [
         'Castilla y León',
         'Euskadi',
         'Comunitat Valenciana',
         'Seleccionar todas'
     ];
-    if (!fuente) {
-        return res.status(400).json({ message: 'Por favor, selecciona una fuente de datos.' });
+
+    
+    if (!fuente || !extractoresDisponibles.includes(fuente)) {
+        return res.status(400).json({
+            message: 'Por favor, selecciona una fuente de datos válida.',
+            opcionesDisponibles: extractoresDisponibles
+        });
     }
 
     try {
@@ -51,66 +57,62 @@ app.get('/api/extractores', (req, res) => {
             resultados.registrosRechazados = resultados.registrosRechazados.concat(nuevosResultados.registrosRechazados);
         };
 
-        if (fuente.toLowerCase() === 'seleccionar todas') {
-            console.log('Cargando datos de todas las fuentes...');
-            
-             castillayleon();
-            combinarResultados({
-                registrosCargados: getInsertadasCorrectamenteCL(),
-                registrosReparados: getModificadosCL(),
-                registrosRechazados: getDescartadosCL()
-            });
+        // Acción según la fuente seleccionada
+        switch (fuente.toLowerCase()) {
+            case 'castilla y león':
+                console.log('Cargando datos desde Castilla y León...');
+                await castillayleon();
+                combinarResultados({
+                    registrosCargados: getInsertadasCorrectamenteCYL(),
+                    registrosReparados: getModificadosCYL(),
+                    registrosRechazados: getDescartadosCYL()
+                });
+                break;
 
-            
-             euskadi();
-            combinarResultados({
-                registrosCargados: getInsertadasCorrectamenteEU(),
-                registrosReparados: getModificadosEU(),
-                registrosRechazados: getDescartadosEU()
-            });
+            case 'euskadi':
+                console.log('Cargando datos desde Euskadi...');
+                await euskadi();
+                combinarResultados({
+                    registrosCargados: getInsertadasCorrectamenteEU(),
+                    registrosReparados: getModificadosEU(),
+                    registrosRechazados: getDescartadosEU()
+                });
+                break;
 
-             valencia();
-            combinarResultados({
-                registrosCargados: getInsertadasCorrectamenteVLC(),
-                registrosReparados: getModificadosVLC(),
-                registrosRechazados: getDescartadosVLC()
-            });
+            case 'comunitat valenciana':
+                console.log('Cargando datos desde Comunitat Valenciana...');
+                await valencia();
+                combinarResultados({
+                    registrosCargados: getInsertadasCorrectamenteVLC(),
+                    registrosReparados: getModificadosVLC(),
+                    registrosRechazados: getDescartadosVLC()
+                });
+                break;
 
-        } else {
-            switch (fuente.toLowerCase()) {
-                case 'castilla y león':
-                    console.log('Cargando datos desde Castilla y León...');
-                     castillayleon();
-                    combinarResultados({
-                        registrosCargados: getInsertadasCorrectamenteCL(),
-                        registrosReparados: getModificadosCL(),
-                        registrosRechazados: getDescartadosCL()
-                    });
-                    break;
+            case 'seleccionar todas':
+                console.log('Cargando datos de todas las fuentes...');
+                await castillayleon();
+                combinarResultados({
+                    registrosCargados: getInsertadasCorrectamenteCYL(),
+                    registrosReparados: getModificadosCYL(),
+                    registrosRechazados: getDescartadosCYL()
+                });
+                await euskadi();
+                combinarResultados({
+                    registrosCargados: getInsertadasCorrectamenteEU(),
+                    registrosReparados: getModificadosEU(),
+                    registrosRechazados: getDescartadosEU()
+                });
+                await valencia();
+                combinarResultados({
+                    registrosCargados: getInsertadasCorrectamenteVLC(),
+                    registrosReparados: getModificadosVLC(),
+                    registrosRechazados: getDescartadosVLC()
+                });
+                break;
 
-                case 'euskadi':
-                    console.log('Cargando datos desde Euskadi...');
-                     euskadi();
-                    combinarResultados({
-                        registrosCargados: getInsertadasCorrectamenteEU(),
-                        registrosReparados: getModificadosEU(),
-                        registrosRechazados: getDescartadosEU()
-                    });
-                    break;
-
-                case 'comunitat valenciana':
-                    console.log('Cargando datos desde Comunitat Valenciana...');
-                     valencia();
-                    combinarResultados({
-                        registrosCargados: getInsertadasCorrectamenteVLC(),
-                        registrosReparados: getModificadosVLC(),
-                        registrosRechazados: getDescartadosVLC()
-                    });
-                    break;
-
-                default:
-                    return res.status(400).json({ message: 'Fuente no válida.' });
-            }
+            default:
+                return res.status(400).json({ message: 'Fuente no válida.' });
         }
 
         return res.status(201).json({
@@ -119,12 +121,14 @@ app.get('/api/extractores', (req, res) => {
         });
     } catch (error) {
         console.error('Error en la API de carga:', error);
-        return res.status(500).json({ message: 'Error interno en la API de carga.', error: error.message });
+        return res.status(500).json({
+            message: 'Error interno en la API de carga.',
+            error: error.message
+        });
     }
+});
 
-   
-
-  });
-   
-   //Inicializar el servidor 
-   app.listen(PORT, () => {console.log(`API corriendo en https://localhost:${PORT}`)});
+// Inicializar el servidor
+app.listen(PORT, () => {
+    console.log(`API corriendo en http://localhost:${PORT}`);
+});
