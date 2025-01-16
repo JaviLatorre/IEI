@@ -4,6 +4,7 @@ const path = require('path');
 
 const app = express();
 const PORT = 3002;
+const xml2js = require('xml2js');
 
 async function xmlToJson(xmlFilePath, outputFolder) {
     const parser = new xml2js.Parser({ explicitArray: false, mergeAttrs: false });
