@@ -6,6 +6,7 @@ const { SUPABASE_URL, SUPABASE_KEY } = require('../credencialesSupaBase');
 // Crear la aplicación Express
 const app = express();
 const port = 3001;
+const respuestaApi;
 
 // Configurar cliente de Supabase
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -55,7 +56,7 @@ app.get('/api/busqueda', async (req, res) =>{
         }
 
         // Responder con éxito
-        const respuestaAPI = data.map(elemento => ({
+        respuestaAPI = data.map(elemento => ({
             nombre: elemento.nombre,
             tipo: elemento.tipo,
             direccion: elemento.direccion,
@@ -70,7 +71,7 @@ app.get('/api/busqueda', async (req, res) =>{
 
         return res.status(200).json({
             message: 'Datos buscados correctamente.',
-            data: respuestaAPI
+            data
         });
 
     } catch (err) {
@@ -83,6 +84,12 @@ app.get('/api/busqueda', async (req, res) =>{
     }
 })
 
+app.post('/api/busqueda', async (req, res) =>{
+    return res.status(201).json({
+        message: 'Datos cargados correctamente.',
+        data: respuestaApi
+    });
+})
 
 async function localidadToProvincia(localidad){
     const {data, error} = await supabase.from('Localidad').select('en_provincia').eq('nombre', localidad).single()
