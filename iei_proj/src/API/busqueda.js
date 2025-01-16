@@ -24,17 +24,6 @@ app.get('/api/busqueda', async (req, res) =>{
             tipo                
         } = req.body;
 
-        // Validar campos correctos
-
-        // const filteredResults = dummyResults.filter((result) => {
-        //     return (
-        //       (filters.localidad === "" || result.localidad.toLowerCase().includes(filters.localidad.toLowerCase())) &&
-        //       (filters.codPostal === "" || result.codPostal === filters.codPostal) &&
-        //       (filters.provincia === "" || result.provincia.toLowerCase().includes(filters.provincia.toLowerCase())) &&
-        //       (filters.tipo === "" || result.tipo === filters.tipo)
-        //     );
-        //   });
-
         // Buscar según los criterios en la tabal Monumentos de Supabase
         const {data, error} = await supabase
             .from('Monumento')
@@ -93,6 +82,8 @@ app.get('/api/busqueda', async (req, res) =>{
         });
     }
 })
+
+
 async function localidadToProvincia(localidad){
     const {data, error} = await supabase.from('Localidad').select('en_provincia').eq('nombre', localidad).single()
     if (error) {
