@@ -228,6 +228,16 @@ async function verificarMonumento(monumento, longitud, latitud, codigoPostal, no
   return true;
 }
 
-castillayleon();
+function getInsertadasCorrectamenteCL() {
+    return insertadas_correctamente;
+}
 
-module.exports = { castillayleon };
+function getModificadosCL() {
+    return insertadas_corregidas;
+}
+
+function getDescartadosCL() {
+    return descartadas;
+}
+
+module.exports = { castillayleon, getInsertadasCorrectamenteCL, getModificadosCL, getDescartadosCL };

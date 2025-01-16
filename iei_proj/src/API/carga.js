@@ -127,4 +127,4 @@ app.get('/api/extractores', (req, res) => {
   });
    
    //Inicializar el servidor 
-   app.listen(PORT, () => {console.log(`API corriendo en httpd://localhost:${PORT}^`)});
+   app.listen(PORT, () => {console.log(`API corriendo en https://localhost:${PORT}`)});

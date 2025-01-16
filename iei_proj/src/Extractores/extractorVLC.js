@@ -342,6 +342,4 @@ function getDescartadosVLC() {
   return descartadas;
 }
 
-valencia()
-
 module.exports = {valencia, getInsertadasCorrectamenteVLC, getModificadosVLC, getDescartadosVLC}
