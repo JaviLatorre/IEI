@@ -14,22 +14,31 @@ let motivosDescarte = [];
 
 let provincia = "";
 
+// Función para consumir la API y devolver el archivo de datos en JSON
+async function extraerDatos(){
+  const fetch = (await import('node-fetch')).default //Usamos una importación dinámica para este módulo porque es un modulo ESM y el proyecto usa CommonJS, así 
+                                                      //lo podemos importar y no se queja.
+  
+  try {
+      // Consumir la API
+      const response = await fetch('http://localhost:3002/CyLAPI');
+      const data = await response.json();
+      return data
+  } catch (error) {
+      console.error('Error extrayendo y guardando datos:', error);
+  } 
+}
+
 // Función principal para procesar el archivo JSON
 async function castillayleon() {
   try {
-    const jsonFilePath = path.join(__dirname, '../FuentesDeDatos', 'monumentosEntrega1.json');
+    console.log("goadfa")
+    const data = await extraerDatos()
+    console.log(JSON.stringify(data, null, 2))
+
+    const monumentos = data?.monumentos?.monumento || [];
 
     console.time('Tiempo de ejecución');
-
-    // Leer archivo JSON
-    const data = await fs.readFile(jsonFilePath, 'utf8');
-    const jsonData = JSON.parse(data);
-    const monumentos = jsonData?.monumentos?.monumento || [];
-
-    if (monumentos.length === 0) {
-      console.log('No se encontraron monumentos en el archivo JSON.');
-      return;
-    }
 
     // Procesar cada monumento
     for (const monumento of monumentos) {
@@ -239,5 +248,7 @@ function getModificadosCL() {
 function getDescartadosCL() {
     return descartadas;
 }
+
+castillayleon()
 
 module.exports = { castillayleon, getInsertadasCorrectamenteCL, getModificadosCL, getDescartadosCL };

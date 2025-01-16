@@ -22,9 +22,13 @@ app.delete('/api/borrar-datos', async (req, res) => {
         return res.status(200).json({ message: 'Todos los datos han sido eliminados correctamente.' });
     } catch (error) {
         console.error('Error al intentar borrar los datos:', error);
-        return res.status(500).json({ message: 'Error interno al intentar borrar los datos.', error: error.message });
+        return res.status(500).json({
+            message: 'Error interno al intentar borrar los datos.',
+            error: error.message,
+        });
     }
 });
+
 
 
 app.get('/api/extractores', async (req, res) => {
