@@ -60,6 +60,9 @@ async function guardarEnBD(monumento) {
         descripcionMonumento = monumento.documentDescription
         codigoPostal = monumento.postalCode
         direccionFinal = monumento.firstAddress
+        longitud = monumento.lonwgs84
+        latitud = monumento.latwgs84
+        territoryCode = monumento.territorycode
 
         let correcto = await verificarProvincia()
         if (!correcto) {
@@ -115,8 +118,8 @@ async function guardarEnBD(monumento) {
                   tipo: determinarTipo(monumento.documentName),
                   direccion : direccionFinal,
                   descripcion : monumento.documentDescription, 
-                  latitud: parseFloat(monumento.latitudelongitude)|| null ,
-                  longitud: parseFloat(monumento.latitudelongitude) || null,
+                  latitud: monumento.latwgs84 ,
+                  longitud: monumento.lonwgs84,
                   codigo_postal: codigoPostal,  
                   en_localidad: municipio,
                 },
@@ -180,14 +183,19 @@ async function verificarMonumento() {
     } else if (codigoPostal == "") {
         descartadas++
         return false
-    } else if (codigoPostal.startsWith("58")) {
-        codigoPostal = "48" + codigoPostal.slice(2)
-        modificado = true
-        return true
+    } else if (!codigoPostal.startsWith(territoryCode)) {
+        descartadas++
+        return false
     } else if (direccionFinal == "") {
         direccionFinal = "Dirección no disponible"
         modificado++
         return true
+    } else if (longitud == "" || latitud == "") {
+        descartadas++
+        return false
+    } else if (longitud > 90 || latitud > 90 || longitud < -90 || latitud < -90) {
+        descartadas++
+        return false
     }
     return true
 }
