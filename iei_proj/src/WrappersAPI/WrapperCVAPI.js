@@ -7,7 +7,7 @@ const app = express();
 const port = 3001;
 
 // Instancia del wrapper con el archivo CSV
-const wrapper = new WrapperCV('../FuentesDeDatos/bienes_inmuebles_interes_cultural(Entrega 1).csv');
+const wrapper = new WrapperCV('../FuentesDeDatos/bienes_inmuebles_interes_cultural_EntregaFinal.csv');
 
 // Endpoint para obtener los datos del JSON
 app.get('/CVAPI', async (req, res) => {

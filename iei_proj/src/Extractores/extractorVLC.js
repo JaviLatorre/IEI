@@ -14,6 +14,7 @@ let insertadas_correctamente = 0;
 let insertadas_corregidas = 0;
 let descartadas = 0;
 let modificado = false;
+let nombresInsertados = [];
 const apiKey = 'AIzaSyD0LXYibe50Cav5v9mcH0ec0IT4YBUaAgQ';
 
 let provincia = "";
@@ -36,12 +37,13 @@ async function extraerDatos(){
 async function valencia() {
   try {
     const data = await extraerDatos()
-    console.log(data)
+    //console.log(data)
    
     //const jsonData = JSON.parse(data);
     //const primerosCuatro = jsonData.slice(0,4);
  
     for (const monumento of data) {
+      modificado = false
       await guardarEnBD(monumento);
     }
 
@@ -98,10 +100,18 @@ async function guardarEnBD(monumento) {
       }
 
       // Obtén el código postal según las coordenadas
-      let res = await obtenerCodigoPostal(latitud, longitud);
-      let codPost = res.codigoPostal
-      let direccion = res.direccion
+      let codPost = await obtenerCodigoPostal(latitud, longitud);
+      let direccion = await obtenerDireccion(latitud, longitud);
       codigoPostal = validarCodigoPostal(codPost, monumento.PROVINCIA);
+
+      if(nombresInsertados.length > 0 && nombresInsertados.includes(monumento.DENOMINACION)){
+        console.log("Monumento ya guardado, este es un repetido")
+        descartadas++;
+        return;
+      }
+      else{
+        nombresInsertados.push(monumento.DENOMINACION)
+      }
 
       //Guardar en SupaBase la provincia donde se encuentra el monumento (si aún no está guardada)
       const { error: error1} = await supabase
@@ -265,22 +275,32 @@ async function obtenerCodigoPostal(latitud, longitud){
        const postalCodeMatch = postalAddress.match(/^\d{5}/);
        const codigoPostal = postalCodeMatch ? postalCodeMatch[0] : 'Código postal no encontrado';
        console.log(codigoPostal)
-   
-       // Segunda solicitud para street_address
-       const streetAddressResponse = await axios.get(
-         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitud},${longitud}&result_type=street_address&key=${apiKey}`
-       );
-       const direccion = streetAddressResponse.data.results[0].formatted_address;
-       console.log(direccion)
-       return{
-         codigoPostal: codigoPostal || 'Código postal no disponible',
-         direccion: direccion
-       } 
+
+       return codigoPostal 
+
      } catch (error) {
-       console.error('Error en la solicitud:', error.response?.data || error.message);
+       console.error('Error en la solicitud de código postal:', error.response?.data || error.message);
      }
 
 }
+
+async function obtenerDireccion(latitud, longitud){
+  try {
+        // Solicitud para street_address
+        const streetAddressResponse = await axios.get(
+          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitud},${longitud}&result_type=street_address&key=${apiKey}`
+        );
+        let direccion = streetAddressResponse.data.results[0].formatted_address;
+        console.log(direccion)
+
+        return direccion
+ 
+      } catch (error) {
+        console.error('Error en la solicitud de dirección:', error.response?.data || error.message);
+      }
+ 
+ }
+ 
 
 function validarCodigoPostal(codigoPostal, provincia) {
   // Verifica si el código postal es nulo o indefinido
