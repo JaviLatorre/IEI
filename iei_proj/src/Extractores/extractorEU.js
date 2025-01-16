@@ -213,5 +213,3 @@ function getDescartadosEU() {
 }
 
 module.exports = { euskadi, getInsertadasCorrectamenteEU, getModificadosEU, getDescartadosEU };
-
-euskadi()

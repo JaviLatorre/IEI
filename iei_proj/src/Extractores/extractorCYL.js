@@ -51,18 +51,22 @@ async function castillayleon() {
 async function guardarEnBD(monumento) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  provincia = normalizarTexto(monumento.poblacion.provincia);
-  let municipio = normalizarTexto(monumento.poblacion.municipio);
-  const nombreMonumento = normalizarTexto(monumento.nombre);
+  provincia = monumento.poblacion.provincia;
+  let municipio = monumento.poblacion.municipio;
+  const nombreMonumento = monumento.nombre;
   let longitudFinal = monumento.coordenadas.longitud;
   const latitud = monumento.coordenadas.latitud;
   const codigoPostal = monumento.codigoPostal;
   modificado = false;
 
   // Verificar datos
-  if (!(await verificarProvincia())) return;
+  //if (!(await verificarProvincia())) return;
   if (!(await verificarMunicipio(municipio))) return;
   if (!(await verificarMonumento(monumento, longitudFinal, latitud, codigoPostal, nombreMonumento, municipio))) return;
+
+  const codiPostalValidado = validarCodigoPostal(codigoPostal, provincia);
+  if (!codiPostalValidado) return;
+    console.log(codiPostalValidado)
 
   if (modificado) insertadas_corregidas++;
   else insertadas_correctamente++;
@@ -83,7 +87,7 @@ async function guardarEnBD(monumento) {
         descripcion: limpiarDescripcion(monumento.Descripcion),
         latitud: latitud,
         longitud: longitudFinal,
-        codigo_postal: validarCodigoPostal(codigoPostal, provincia),
+        codigo_postal: codiPostalValidado,
         en_localidad: municipio,
       },
     ]);
@@ -131,18 +135,32 @@ function limpiarDescripcion(texto) {
 function validarCodigoPostal(codigoPostal, provincia) {
   if (!codigoPostal) {
     motivosDescarte.push('Código postal no disponible');
-    return null;
+    descartadas++;
+    return false;
   }
 
   codigoPostal = codigoPostal.toString().trim();
 
-  if ((provincia === "ÁVILA" || provincia === "BURGOS") && codigoPostal.length === 4) {
+  if ((provincia === "Ávila" || provincia === "Burgos") && codigoPostal.length === 4) {
+    modificado = true;
     return "0" + codigoPostal;
+  }
+
+  if ((provincia === "León" && !codigoPostal.startsWith("24")) || (provincia === "Palencia" && !codigoPostal.startsWith("34")) 
+    || (provincia === "Salamanca" && !codigoPostal.startsWith("37")) || (provincia === "Segovia" && !codigoPostal.startsWith("40"))
+    || (provincia === "Soria" && !codigoPostal.startsWith("42")) || (provincia === "Valladolid" && !codigoPostal.startsWith("47"))
+    || (provincia === "Zamora" && !codigoPostal.startsWith("49")) || (provincia === "Ávila" && !codigoPostal.startsWith("04"))
+    || (provincia === "Burgos" && !codigoPostal.startsWith("09"))
+  ) {
+    motivosDescarte.push(`Código postal inválido: ${codigoPostal}`);
+    descartadas++;
+    return false;
   }
 
   if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
     motivosDescarte.push(`Código postal inválido: ${codigoPostal}`);
-    return null;
+    descartadas++;
+    return false;
   }
 
   return codigoPostal;
@@ -210,6 +228,16 @@ async function verificarMonumento(monumento, longitud, latitud, codigoPostal, no
   return true;
 }
 
-castillayleon();
+function getInsertadasCorrectamenteCL() {
+    return insertadas_correctamente;
+}
 
-module.exports = { castillayleon };
+function getModificadosCL() {
+    return insertadas_corregidas;
+}
+
+function getDescartadosCL() {
+    return descartadas;
+}
+
+module.exports = { castillayleon, getInsertadasCorrectamenteCL, getModificadosCL, getDescartadosCL };
