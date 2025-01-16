@@ -10,6 +10,8 @@ const DataLoad = () => {
   });
 
   const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleCheckboxChange = (e) => {
     const { name, checked } = e.target;
@@ -29,34 +31,107 @@ const DataLoad = () => {
     }
   };
 
-  const handleLoadData = () => {
-    // Aquí puedes añadir la lógica de carga de datos
-    setResults({
-      loadedCount: "NN",
-      repaired: [
-        {
-          fuente: "Fuente ejemplo",
-          nombre: "Nombre ejemplo",
-          localidad: "Localidad ejemplo",
-          motivoError: "Motivo ejemplo",
-          operacion: "Operación ejemplo",
+  const handleLoadData = async () => {
+    const sources = [];
+    if (selectedSources.castillaLeon) sources.push("Castilla y León");
+    if (selectedSources.comunitatValenciana) sources.push("Comunitat Valenciana");
+    if (selectedSources.euskadi) sources.push("Euskadi");
+    if (selectedSources.selectAll) sources.push("Seleccionar todas");
+
+    if (sources.length === 0) {
+      alert("Seleccione al menos una fuente de datos.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null); // Limpiar cualquier error previo
+
+    try {
+      const responses = await Promise.all(
+        sources.map((fuente) =>
+          fetch(`api/extractores?fuente=${encodeURIComponent(fuente)}`, {  
+            method: "GET",
+          })
+            .then((res) => res.json())
+            .catch((err) => {
+              console.error(`Error al cargar datos desde ${fuente}:`, err);
+              return { message: `Error al cargar datos desde ${fuente}.` };
+            })
+        )
+      );
+
+      // Combinar resultados de las fuentes
+      const combinedResults = responses.reduce(
+        (acc, current) => {
+          if (current.resultados) {
+            acc.loadedCount += current.resultados.registrosCargados || 0;
+            acc.repaired.push(...current.resultados.registrosReparados);
+            acc.rejected.push(...current.resultados.registrosRechazados);
+          }
+          return acc;
         },
-      ],
-      rejected: [
-        {
-          fuente: "Fuente ejemplo 2",
-          nombre: "Nombre ejemplo 2",
-          localidad: "Localidad ejemplo 2",
-          motivoError: "Motivo ejemplo 2",
-        },
-      ],
-    });
+        { loadedCount: 0, repaired: [], rejected: [] }
+      );
+
+      setResults({
+        loadedCount: combinedResults.loadedCount,
+        repaired: combinedResults.repaired,
+        rejected: combinedResults.rejected,
+      });
+    } catch (error) {
+      console.error("Error al cargar los datos:", error);
+      setError("Error al cargar los datos. Consulte la consola para más detalles.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleClearData = () => {
-    // Aquí puedes añadir la lógica para borrar el almacén de datos
-    setResults(null);
-    alert("Almacén de datos borrado");
+  const handleClearData = async () => {
+    const sources = [];
+    if (selectedSources.castillaLeon) sources.push("Castilla y León");
+    if (selectedSources.comunitatValenciana) sources.push("Comunitat Valenciana");
+    if (selectedSources.euskadi) sources.push("Euskadi");
+    if (selectedSources.selectAll) sources.push("Seleccionar todas");
+
+    if (sources.length === 0) {
+      alert("Seleccione al menos una fuente de datos.");
+      return;
+    }
+
+    try {
+      const responses = await Promise.all(
+        sources.map((fuente) =>
+          fetch(`/api/borrar-datos`, { method: "DELETE" })
+            .then((res) => res.json())
+            .catch((err) => {
+              console.error("Error al borrar los datos:", err);
+              return { message: "Error al borrar los datos." };
+            })
+        )
+      );
+
+      // Informar al usuario sobre la eliminación exitosa
+      const errorOccurred = responses.some((response) => response.error);
+      if (errorOccurred) {
+        alert("Error al borrar los datos. Consulte la consola.");
+      } else {
+        alert("Datos borrados exitosamente.");
+        setResults(null); // Limpiar resultados tras el borrado
+      }
+    } catch (error) {
+      console.error("Error al borrar los datos:", error);
+      alert("Error al borrar los datos. Consulte la consola.");
+    }
+  };
+
+  const handleCancel = () => {
+    setSelectedSources({
+      selectAll: false,
+      castillaLeon: false,
+      comunitatValenciana: false,
+      euskadi: false,
+    });
+    setResults(null); // Limpiar resultados al cancelar
   };
 
   return (
@@ -72,7 +147,8 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Seleccionar todas
-        </label> <br/>
+        </label>{" "}
+        <br />
         <label>
           <input
             type="checkbox"
@@ -81,7 +157,8 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Castilla y León
-        </label> <br/>
+        </label>{" "}
+        <br />
         <label>
           <input
             type="checkbox"
@@ -90,7 +167,8 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Comunitat Valenciana
-        </label> <br/>
+        </label>{" "}
+        <br />
         <label>
           <input
             type="checkbox"
@@ -99,33 +177,61 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Euskadi
-        </label> 
+        </label>
       </div>
       <div className="data-load-buttons">
-        <button type="button" className="cancel2-button">Cancelar</button>
-        <button onClick={handleLoadData} type="button" className="load-button">Cargar</button>
-        <button onClick={handleClearData} type="button" className="reset-button">Borrar almacén de datos</button>
+        <button
+          type="button"
+          className="cancel2-button"
+          onClick={handleCancel}
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleLoadData}
+          type="button"
+          className="load-button"
+          disabled={loading} // Deshabilitar el botón mientras carga
+        >
+          {loading ? "Cargando..." : "Cargar"}
+        </button>
+        <button
+          onClick={handleClearData}
+          type="button"
+          className="reset-button"
+        >
+          Borrar almacén de datos
+        </button>
       </div>
       <div className="data-load-results">
         <h3>Resultados de la carga:</h3>
+        {error && <p className="error">{error}</p>}
         {results ? (
           <div>
             <p>Número de registros cargados correctamente: {results.loadedCount}</p>
             <p>Registros con errores y reparados:</p>
             <ul>
-              {results.repaired.map((item, index) => (
-                <li key={index}>
-                  {`Fuente: ${item.fuente}, Nombre: ${item.nombre}, Localidad: ${item.localidad}, Motivo del error: ${item.motivoError}, Operación: ${item.operacion}`}
-                </li>
-              ))}
+              {results.repaired.length > 0 ? (
+                results.repaired.map((item, index) => (
+                  <li key={index}>
+                    {`Fuente: ${item.fuente}, Nombre: ${item.nombre}, Localidad: ${item.localidad}, Motivo del error: ${item.motivoError}, Operación: ${item.operacion}`}
+                  </li>
+                ))
+              ) : (
+                <li>No hay registros reparados</li>
+              )}
             </ul>
             <p>Registros con errores y rechazados:</p>
             <ul>
-              {results.rejected.map((item, index) => (
-                <li key={index}>
-                  {`Fuente: ${item.fuente}, Nombre: ${item.nombre}, Localidad: ${item.localidad}, Motivo del error: ${item.motivoError}`}
-                </li>
-              ))}
+              {results.rejected.length > 0 ? (
+                results.rejected.map((item, index) => (
+                  <li key={index}>
+                    {`Fuente: ${item.fuente}, Nombre: ${item.nombre}, Localidad: ${item.localidad}, Motivo del error: ${item.motivoError}`}
+                  </li>
+                ))
+              ) : (
+                <li>No hay registros rechazados</li>
+              )}
             </ul>
           </div>
         ) : (
