@@ -17,17 +17,20 @@ const Busqueda = () => {
       // Construye los parámetros de consulta a partir de los filtros
       const queryParams = new URLSearchParams(filters).toString();
 
+      console.log(queryParams);
+
       // Realiza la petición a la API (reemplaza la URL con tu endpoint real)
-      const response = await fetch(`https://tu-api.com/monumentos?${queryParams}`);
+      const response = await fetch(`./API/busqueda.js${queryParams}`);
 
       if (!response.ok) {
         throw new Error(`Error en la API: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response;
 
       // Actualiza los resultados con los datos obtenidos de la API
       setSearchResults(data);
+      console.log(data);
     } catch (err) {
       console.error("Error al realizar la búsqueda:", err);
       setError("No se pudo realizar la búsqueda. Intenta nuevamente.");

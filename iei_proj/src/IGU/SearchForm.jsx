@@ -7,14 +7,13 @@ const SearchForm = ({ onSearch }) => {
     localidad: "",
     codPostal: "",
     provincia: "",
-    tipo: "Puente",
+    tipo: "Yacimiento Arqueológico",
   });
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
     setFilters({
       ...filters,
-      [name]: value.toLowerCase(),
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -48,12 +47,11 @@ const SearchForm = ({ onSearch }) => {
         onChange={handleChange}
       />
       <select name="tipo" value={filters.tipo} onChange={handleChange}>
-        <option value="YacimientoArqueologico">Yacimiento Arqueológico</option>
+        <option value="Yacimiento Arqueologico">Yacimiento Arqueológico</option>
         <option value="Iglesia-Ermita">Iglesia-Ermita</option>
         <option value="Monasterio-Convento">Monasterio-Convento</option>
         <option value="Castillo-Fortaleza-Torre">Castillo-Fortaleza-Torre</option>
-        <option value="EdificioSingular">Edificio Singular</option>
-        <option value="Puente">Puente</option>
+        <option value="Edificio Singular">Edificio Singular</option>
         <option value="Otros">Otros</option>
       </select>
       <div>
