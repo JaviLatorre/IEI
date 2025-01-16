@@ -32,27 +32,11 @@ async function euskadi(){
 
         const data = await extraerDatos()
 
-         // Verificar que `data` sea un string
-         const dataString = typeof data === 'string' ? data : JSON.stringify(data);
-
-        const updatedData = dataString.replace(/"address"\s:\s"([^"]*)"/g, (match, p1, offset, string) => {
-            // Verificar si este es el primer "address" dentro de su bloque JSON
-            const before = string.slice(0, offset); // Texto antes de este match
-            const isFirstAddress = before.lastIndexOf('{') > before.lastIndexOf('"address"');
-            return isFirstAddress ? `"firstAddress": "${p1}"` : match;
-        });
-
-        //console.log(updatedData)
-
-        // Parsear el contenido como JSON
-        const jsonData = JSON.parse(updatedData);
-        console.log(jsonData)
-
-        const primerosCuatro = jsonData.slice(0, 4);
+        //const primerosCuatro = jsonData.slice(0, 4);
 
         // Iterar sobre los monumentos y esperar a que se complete cada operación
         console.time('Tiempo de ejecución');
-        for (const monumento of jsonData) {
+        for (const monumento of data) {
             //console.log(monumento)
             await guardarEnBD(monumento);
         }
