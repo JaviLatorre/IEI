@@ -48,7 +48,7 @@ async function euskadi(){
         const jsonData = JSON.parse(updatedData);
         console.log(jsonData)
 
-        /*const primerosCuatro = jsonData.slice(0, 4);
+        const primerosCuatro = jsonData.slice(0, 4);
 
         // Iterar sobre los monumentos y esperar a que se complete cada operación
         console.time('Tiempo de ejecución');
@@ -61,7 +61,7 @@ async function euskadi(){
         console.log('Todos los monumentos han sido procesados.');
         console.log('Monumentos insetados correctamente: ', insertadas_correctamente)
         console.log('Monumentos corregidos: ', insertadas_corregidas)
-        console.log('Monumentos descartados: ', descartadas)*/
+        console.log('Monumentos descartados: ', descartadas)
     } catch (err) {
         console.error('Error:', err);
     }
@@ -141,7 +141,9 @@ async function guardarEnBD(monumento) {
         if(error3){
             console.error('Error guardando el monumento:',error3);
         }
-
+       /*var monumentoSol = `nombre: ${monumento.documentName}\n tipo: ${determinarTipo(monumento.documentName)}\n direccion: ${direccionFinal}\n descripción: ${monumento.documentDescription}\n
+        latitud: ${parseFloat(monumento.latwgs84)}\n longitud: ${parseFloat(monumento.lonwgs84)}\n codigo_postal: ${codigoPostal}\n en_localidad: ${municipio}\n, en_provincia: ${provincia}\n\n\n`
+        console.log(monumentoSol)*/
 }
 
 async function verificarProvincia(){
