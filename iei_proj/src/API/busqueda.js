@@ -16,6 +16,7 @@ app.use(express.json());
 
 
 app.get('/search', async (req, res) =>{
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
     console.log('Consulta:');
     try {
         // Extraer datos del filtro de la solicitud
@@ -86,10 +87,11 @@ app.get('/search', async (req, res) =>{
                 longitud: elemento.longitud,
 
             }))
-            console.log(respuestaAPI)
+            console.log(respuestaAPI[0])
             return res.status(200).json({
+                ok: true,
                 message: 'Datos buscados correctamente.',
-                data: respuestaApi,
+                data: respuestaAPI,
             });
         }
 
@@ -103,12 +105,12 @@ app.get('/search', async (req, res) =>{
     }
 })
 
-// app.post('/api/busqueda', async (req, res) =>{
-//     return res.status(201).json({
+//  app.post('/search', async (req, res) =>{
+//      return res.status(200).json({
 //         message: 'Datos cargados correctamente.',
-//         data: respuestaApi
-//     });
-// })
+//         data: respuestaAPI,
+//      });
+//  })
 
 // async function localidadToProvincia(localidad, res){
 //     const {data, error} = await supabase.from('Localidad').select('en_provincia').eq('nombre', localidad).single()

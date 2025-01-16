@@ -4,6 +4,11 @@ import MapComponent from "./IGU/MapComponent";
 import ResultsTable from "./IGU/ResultTable";
 import "./index.css";
 
+// const cors = require('cors');
+// app.use(cors({
+//     origin: 'http://localhost:3000', // Dominio del cliente
+// }));
+
 const Busqueda = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -20,14 +25,13 @@ const Busqueda = () => {
       console.log(queryParams);
 
       // Realiza la petición a la API (reemplaza la URL con tu endpoint real)
-      const response = await fetch(`http://localhost:3005/search?${queryParams}`, {mode: 'no-cors'});
+      const response = await fetch(`http://localhost:3005/search?${queryParams}`);
+       if (!response.ok) {
+         throw new Error(`Error en la API: ${response.statusText}`);
+       }
 
-      if (!response.ok) {
-        throw new Error(`Error en la API: ${response.statusText}`);
-      }
-
-      const data = await response;
-
+      const data = await response.json();
+      console.log('Respuesta de la API: ',data)
       // Actualiza los resultados con los datos obtenidos de la API
       setSearchResults(data);
 
