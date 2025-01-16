@@ -47,11 +47,12 @@ const SearchForm = ({ onSearch }) => {
         onChange={handleChange}
       />
       <select name="tipo" value={filters.tipo} onChange={handleChange}>
-        <option value="Yacimiento Arqueologico">Yacimiento Arqueológico</option>
+        <option value="Yacimiento Arqueológico">Yacimiento Arqueológico</option>
         <option value="Iglesia-Ermita">Iglesia-Ermita</option>
         <option value="Monasterio-Convento">Monasterio-Convento</option>
         <option value="Castillo-Fortaleza-Torre">Castillo-Fortaleza-Torre</option>
         <option value="Edificio Singular">Edificio Singular</option>
+        <option value="Puente">Puente</option>
         <option value="Otros">Otros</option>
       </select>
       <div>
