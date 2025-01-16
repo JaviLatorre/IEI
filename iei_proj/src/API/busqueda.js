@@ -5,8 +5,8 @@ const { SUPABASE_URL, SUPABASE_KEY } = require('../credencialesSupaBase');
 
 // Crear la aplicación Express
 const app = express();
-const port = 3001;
-const respuestaApi;
+const port = 3005;
+let respuestaApi = [];
 
 // Configurar cliente de Supabase
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -15,7 +15,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 app.use(express.json());
 
 
-app.get('/api/busqueda', async (req, res) =>{
+app.get('/API/busqueda.js', async (req, res) =>{
     try {
         // Extraer datos del filtro de la solicitud
         const consulta = {
@@ -23,27 +23,36 @@ app.get('/api/busqueda', async (req, res) =>{
             codPostal,
             provincia,
             tipo                
-        } = req.body;
+        } = req.query;
 
+        console.log('la api se llama')
+        console.log(consulta);
         // Buscar según los criterios en la tabal Monumentos de Supabase
-        const {data, error} = await supabase
+        let query = await supabase
             .from('Monumento')
             .select('*')
         // Aplicar filtros
         if (consulta.localidad) {
-            data.eq('en_localidad', consulta.localidad)
+            query.eq('en_localidad', consulta.localidad)
         }
         if (consulta.codPostal) {
-            data.eq('codigo_postal', consulta.codPostal)
+            query.eq('codigo_postal', consulta.codPostal)
         }
         if (consulta.tipo) {
-            data.eq('tipo', consulta.tipo)
+            query.eq('tipo', consulta.tipo)
         }
         if (consulta.provincia) {
-                const {data2, error2} = await supabase.from('Localidad').select('nombre').eq('en_provincia', consulta.provincia)
-                data2.array.forEach(localidad => {
-                    data.eq('en_localidad', localidad)
-                });
+            
+            const { data: localidades, error: error2 } = await supabase
+            .from('Localidad')
+            .select('nombre')
+            .eq('en_provincia', provincia);
+    
+            if (error2) throw error2;
+    
+            if (localidades && localidades.length > 0) {
+                query = query.in('en_localidad', localidades.map((l) => l.nombre));
+            }
         }
 
         // Maneja errores de Supabase
