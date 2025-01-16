@@ -1,82 +1,126 @@
-// Importar módulos necesarios
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
+
+const { castillayleon } = require('./extractores/castillayleon');
+const { euskadi } = require('./extractores/euskadi');
+const { valencia } = require('./extractores/valencia');
+const {eliminarBD } = require('./DAL');
 const { SUPABASE_URL, SUPABASE_KEY } = require('../credencialesSupaBase');
 
-// Crear la aplicación Express
 const app = express();
-const port = 3001;
+const port = 3004;
 
-// Configurar cliente de Supabase
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Middleware para procesar JSON
 app.use(express.json());
 
-// Ruta para manejar la carga de datos
-app.post('/api/carga', async (req, res) => {
+app.get('/api/borrar-datos', async (req, res) => {
     try {
-        // Extraer datos del cuerpo de la solicitud
-        const {
-            nombre,
-            tipo,
-            direccion,
-            descripcion,
-            latitud,
-            longitud,
-            codigo_postal,
-            en_localidad
-        } = req.body;
-
-        // Validar que los campos obligatorios estén presentes
-        if (!nombre || !tipo || !direccion || !en_localidad) {
-            return res.status(400).json({
-                message: 'Faltan datos obligatorios: nombre, tipo, direccion, en_localidad.'
-            });
-        }
-
-        // Insertar los datos en la tabla Monumento en Supabase
-        const { data, error } = await supabase
-            .from('Monumento')
-            .insert([
-                {
-                    nombre,
-                    tipo,
-                    direccion,
-                    descripcion: descripcion || 'Descripción no disponible',
-                    latitud: latitud || null,
-                    longitud: longitud || null,
-                    codigo_postal: codigo_postal || null,
-                    en_localidad
-                }
-            ])
-            .select();
-
-        // Manejar errores de Supabase
-        if (error) {
-            console.error('Error al insertar en Supabase:', error);
-            return res.status(500).json({
-                message: 'Error al guardar los datos en la base de datos.',
-                error: error.message
-            });
-        }
-
-        // Responder con éxito
-        return res.status(201).json({
-            message: 'Datos cargados correctamente.',
-            data
-        });
-    } catch (err) {
-        // Manejar errores del servidor
-        console.error('Error en la API de carga:', err);
-        return res.status(500).json({
-            message: 'Error interno del servidor.',
-            error: err.message
-        });
+        console.log('Eliminando los datos de todas las tablas...');
+        await eliminarBD();
+        return res.status(200).json({ message: 'Todos los datos han sido eliminados correctamente.' });
+    } catch (error) {
+        console.error('Error al intentar borrar los datos:', error);
+        return res.status(500).json({ message: 'Error interno al intentar borrar los datos.', error: error.message });
     }
 });
 
-// Iniciar el servidor
-app.listen(port, () => {
-    console.log(`Servidor de carga escuchando en http://localhost:${port}`);
-});
+
+
+app.get('/api/extractores', (req, res) => {
+    const extractoresDisponibles = [
+        'Castilla y León',
+        'Euskadi',
+        'Comunitat Valenciana',
+        'Seleccionar todas'
+    ];
+    if (!fuente) {
+        return res.status(400).json({ message: 'Por favor, selecciona una fuente de datos.' });
+    }
+
+    try {
+        let resultados = {
+            registrosCargados: 0,
+            registrosReparados: [],
+            registrosRechazados: []
+        };
+
+        const combinarResultados = (nuevosResultados) => {
+            resultados.registrosCargados += nuevosResultados.registrosCargados;
+            resultados.registrosReparados = resultados.registrosReparados.concat(nuevosResultados.registrosReparados);
+            resultados.registrosRechazados = resultados.registrosRechazados.concat(nuevosResultados.registrosRechazados);
+        };
+
+        if (fuente.toLowerCase() === 'seleccionar todas') {
+            console.log('Cargando datos de todas las fuentes...');
+            
+             castillayleon();
+            combinarResultados({
+                registrosCargados: getInsertadasCorrectamenteCL(),
+                registrosReparados: getModificadosCL(),
+                registrosRechazados: getDescartadosCL()
+            });
+
+            
+             euskadi();
+            combinarResultados({
+                registrosCargados: getInsertadasCorrectamenteEU(),
+                registrosReparados: getModificadosEU(),
+                registrosRechazados: getDescartadosEU()
+            });
+
+             valencia();
+            combinarResultados({
+                registrosCargados: getInsertadasCorrectamenteVLC(),
+                registrosReparados: getModificadosVLC(),
+                registrosRechazados: getDescartadosVLC()
+            });
+
+        } else {
+            switch (fuente.toLowerCase()) {
+                case 'castilla y león':
+                    console.log('Cargando datos desde Castilla y León...');
+                     castillayleon();
+                    combinarResultados({
+                        registrosCargados: getInsertadasCorrectamenteCL(),
+                        registrosReparados: getModificadosCL(),
+                        registrosRechazados: getDescartadosCL()
+                    });
+                    break;
+
+                case 'euskadi':
+                    console.log('Cargando datos desde Euskadi...');
+                     euskadi();
+                    combinarResultados({
+                        registrosCargados: getInsertadasCorrectamenteEU(),
+                        registrosReparados: getModificadosEU(),
+                        registrosRechazados: getDescartadosEU()
+                    });
+                    break;
+
+                case 'comunitat valenciana':
+                    console.log('Cargando datos desde Comunitat Valenciana...');
+                     valencia();
+                    combinarResultados({
+                        registrosCargados: getInsertadasCorrectamenteVLC(),
+                        registrosReparados: getModificadosVLC(),
+                        registrosRechazados: getDescartadosVLC()
+                    });
+                    break;
+
+                default:
+                    return res.status(400).json({ message: 'Fuente no válida.' });
+            }
+        }
+
+        return res.status(201).json({
+            message: `Datos cargados desde ${fuente} correctamente.`,
+            resultados
+        });
+    } catch (error) {
+        console.error('Error en la API de carga:', error);
+        return res.status(500).json({ message: 'Error interno en la API de carga.', error: error.message });
+    }
+
+  });
+    
