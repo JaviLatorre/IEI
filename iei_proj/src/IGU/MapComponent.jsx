@@ -7,6 +7,7 @@ const MapComponent = ({ results }) => {
   const mapRef = useRef(null); // Referencia para almacenar el mapa
   const markersRef = useRef([]); // Referencia para almacenar los marcadores
   const data = results?.data || []; 
+  console.log(data);
 
   useEffect(() => {
     if (!mapRef.current) {
