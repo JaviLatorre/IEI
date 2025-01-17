@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { Index } from "./index.css";
 
 // Importa los componentes
 import Busqueda from "./Busqueda";
@@ -13,10 +14,10 @@ function App() {
         <nav>
           <ul>
             <li>
-              <Link to="/search">Busqueda</Link>
+              <Link class="link" to="/search">Busqueda</Link>
             </li>
             <li>
-              <Link to="/data-load">Data Load</Link>
+              <Link class="link" to="/data-load">Data Load</Link>
             </li>
           </ul>
         </nav>
