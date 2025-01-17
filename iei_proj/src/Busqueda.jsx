@@ -3,11 +3,13 @@ import SearchForm from "./IGU/SearchForm";
 import MapComponent from "./IGU/MapComponent";
 import ResultsTable from "./IGU/ResultTable";
 import "./index.css";
+import { map } from "leaflet";
 
 const Busqueda = () => {
   const initialFilters = { campo1: "", campo2: "" }; // Estado inicial del formulario
 
   const [searchResults, setSearchResults] = useState([]);
+  const [mapResults, setMapResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState(initialFilters); // Almacena los valores del formulario
@@ -19,9 +21,6 @@ const Busqueda = () => {
     try {
       const queryParams = new URLSearchParams(filters).toString();
       console.log(queryParams);
-
-      const responseInicio = await fetch(`http://localhost:3005/mapa?${queryParams}`);
-      const dataMapa = await responseInicio.json();
 
       const response = await fetch(`http://localhost:3005/search?${queryParams}`);
       if (!response.ok) {
@@ -40,6 +39,7 @@ const Busqueda = () => {
     }
   };
 
+
   const handleCancel = () => {
     setSearchResults([]); // Vacía los resultados de búsqueda
     setError(null); // Limpia el mensaje de error
@@ -47,6 +47,36 @@ const Busqueda = () => {
     setFilters(initialFilters); // Restaura los filtros a su estado inicial
   };
 
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+  
+      try {
+        const queryParams = new URLSearchParams(filters).toString();
+     
+  
+        const response = await fetch(`http://localhost:3005/mapa?${queryParams}`);
+        if (!response.ok) {
+          throw new Error(`Error en la API: ${response.statusText}`);
+        }
+  
+        const data = await response.json();
+       
+  
+        setMapResults(data);
+      } catch (err) {
+        console.error("Error al realizar la búsqueda:", err);
+        setError("No se pudo realizar la búsqueda. Intenta nuevamente.");
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchData(); // Llama a la función interna
+  }, []); // [] asegura que solo se ejecutará al montar el componente
+
+  console.log('datos para el mapa:',mapResults);
   return (
     <div className="container">
       <div className="top-section">
@@ -57,7 +87,7 @@ const Busqueda = () => {
           filters={filters}
           setFilters={setFilters}
         />
-        <MapComponent results={searchResults} />
+        <MapComponent result={mapResults}/>
       </div>
       {error && <div className="error-message">{error}</div>}
       <ResultsTable results={searchResults} />
