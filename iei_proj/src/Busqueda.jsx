@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import SearchForm from "./IGU/SearchForm";
 import MapComponent from "./IGU/MapComponent";
 import ResultsTable from "./IGU/ResultTable";
@@ -47,34 +47,7 @@ const Busqueda = () => {
     setFilters(initialFilters); // Restaura los filtros a su estado inicial
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
   
-      try {
-        const queryParams = new URLSearchParams(filters).toString();
-     
-  
-        const response = await fetch(`http://localhost:3005/mapa?${queryParams}`);
-        if (!response.ok) {
-          throw new Error(`Error en la API: ${response.statusText}`);
-        }
-  
-        const data = await response.json();
-       
-  
-        setMapResults(data);
-      } catch (err) {
-        console.error("Error al realizar la búsqueda:", err);
-        setError("No se pudo realizar la búsqueda. Intenta nuevamente.");
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    fetchData(); // Llama a la función interna
-  }, []); // [] asegura que solo se ejecutará al montar el componente
 
   console.log('datos para el mapa:',mapResults);
   return (
@@ -87,7 +60,7 @@ const Busqueda = () => {
           filters={filters}
           setFilters={setFilters}
         />
-        <MapComponent result={mapResults}/>
+        <MapComponent/>
       </div>
       {error && <div className="error-message">{error}</div>}
       <ResultsTable results={searchResults} />
