@@ -25,13 +25,14 @@ async function extraerDatos() {
 
 // Función principal
 async function castillayleon() {
+  
     registrosReparadosCYL.length = 0;
     registrosRechazadosCYL.length = 0;
 
     try {
         const data = await extraerDatos();
 
-        for (const monumento of data) {
+        for (const monumento of data.monumentos.monumento) {
             modificado = false;
             await guardarEnBD(monumento);
         }
@@ -50,15 +51,15 @@ async function guardarEnBD(monumento) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
     try {
-        provincia = monumento.provincia;
-
+        provincia = monumento.poblacion.provincia;
+        
         let correcto = await verificarProvincia();
         if (!correcto) {
-            registrarRechazo(monumento, "Provincia no válida");
+            registrarRechazo(monumento, "Provincia no válida "+ provincia);
             return;
         }
 
-        municipio = monumento.municipio;
+        municipio = monumento.poblacion.municipio;
         correcto = await verificarMunicipio();
         if (!correcto) {
             registrarRechazo(monumento, "Municipio no válido");
@@ -66,7 +67,7 @@ async function guardarEnBD(monumento) {
         }
 
         const nombreMonumento = monumento.nombre;
-        const descripcionMonumento = monumento.descripcion;
+        const descripcionMonumento = monumento.Descripcion;
 
         if (!nombreMonumento || !descripcionMonumento) {
             registrarRechazo(monumento, "Datos del monumento incompletos");
@@ -81,9 +82,9 @@ async function guardarEnBD(monumento) {
             tipo: determinarTipo(nombreMonumento),
             direccion: monumento.direccion || 'Dirección no disponible',
             descripcion: descripcionMonumento,
-            latitud: monumento.latitud,
-            longitud: monumento.longitud,
-            codigo_postal: monumento.codigo_postal || 'Código postal no disponible',
+            latitud: monumento.coordenadas.latitud,
+            longitud: monumento.coordenadas.longitud,
+            codigo_postal: monumento.codigoPostal || 'Código postal no disponible',
             en_localidad: municipio,
         }]);
 
@@ -137,7 +138,7 @@ function registrarReparacion(monumento, motivo) {
     registrosReparadosCYL.push({
         fuente: "Castilla y León",
         nombre: monumento.nombre,
-        localidad: municipio,
+        localidad: monumento.municipio,
         motivoError: motivo,
     });
 }
@@ -146,7 +147,7 @@ function registrarRechazo(monumento, motivo) {
     registrosRechazadosCYL.push({
         fuente: "Castilla y León",
         nombre: monumento.nombre,
-        localidad: municipio,
+        localidad: monumento.municipio,
         motivoError: motivo,
     });
 }

@@ -187,6 +187,7 @@ function registrarRechazo(monumento, motivo) {
 // Funciones para obtener datos
 function getInsertadasCorrectamenteEU() {
     return insertadas_correctamente;
+  
 }
 
 function getModificadosEU() {

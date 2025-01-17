@@ -67,7 +67,7 @@ app.get('/api/extractores', async (req, res) => {
         switch (fuente.toLowerCase()) {
             case 'castilla y león':
                 console.log('Cargando datos desde Castilla y León...');
-                await cas();
+                await castillayleon();
                 combinarResultados({
                     registrosCargados: getInsertadasCorrectamenteCYL(),
                     registrosReparados: registrosReparadosCYL,

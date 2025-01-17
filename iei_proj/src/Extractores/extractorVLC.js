@@ -221,7 +221,7 @@ function registrarReparacion(monumento, motivo, operacion) {
     registrosReparadosVLC.push({
         fuente: "Valencia",
         nombre: monumento.DENOMINACION,
-        localidad: municipio,
+        localidad: monumento.MUNICIPIO,
         motivoError: motivo,
         operacion: operacion,
     });
@@ -231,7 +231,7 @@ function registrarRechazo(monumento, motivo) {
     registrosRechazadosVLC.push({
         fuente: "Valencia",
         nombre: monumento.DENOMINACION,
-        localidad: municipio,
+        localidad: monumento.MUNICIPIO,
         motivoError: motivo,
     });
 }
