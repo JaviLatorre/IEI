@@ -17,7 +17,7 @@ app.use(express.json());
 app.get('/mapa', async (req, res) => {
     res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
     try {
-        const {data, error} = await supabase.from('Monumento').select('nombre', 'latitud', 'longitud')
+        const {data, error} = await supabase.from('Monumento').select('nombre, latitud, longitud')
         // Maneja error de Supabase
         if(error){
             console.error('Error al buscar en Supabase: ', error);
