@@ -1,7 +1,7 @@
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 
-const { castillayleon, getInsertadasCorrectamenteCYL, getModificadosCYL, getDescartadosCYL } = require('../Extractores/extractorCYL');
+const { castillayleon, getInsertadasCorrectamenteCL, getModificadosCL, getDescartadosCL } = require('../Extractores/extractorCYL');
 const { euskadi, getInsertadasCorrectamenteEU, getModificadosEU, getDescartadosEU } = require('../Extractores/extractorEU');
 const { valencia, getInsertadasCorrectamenteVLC, getModificadosVLC, getDescartadosVLC } = require('../Extractores/extractorVLC');
 const { eliminarBD } = require('../Extractores/DAL');
@@ -16,6 +16,7 @@ app.use(express.json());
 
 // Endpoint para borrar los datos
 app.delete('/api/borrar-datos', async (req, res) => {
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3003');
     try {
         console.log('Eliminando los datos de todas las tablas...');
         await eliminarBD();
@@ -32,6 +33,7 @@ app.delete('/api/borrar-datos', async (req, res) => {
 
 
 app.get('/api/extractores', async (req, res) => {
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3003');
     const { fuente } = req.query; 
     const extractoresDisponibles = [
         'Castilla y León',
@@ -67,9 +69,9 @@ app.get('/api/extractores', async (req, res) => {
                 console.log('Cargando datos desde Castilla y León...');
                 await castillayleon();
                 combinarResultados({
-                    registrosCargados: getInsertadasCorrectamenteCYL(),
-                    registrosReparados: getModificadosCYL(),
-                    registrosRechazados: getDescartadosCYL()
+                    registrosCargados: getInsertadasCorrectamenteCL(),
+                    registrosReparados: getModificadosCL(),
+                    registrosRechazados: getDescartadosCL()
                 });
                 break;
 
@@ -97,9 +99,9 @@ app.get('/api/extractores', async (req, res) => {
                 console.log('Cargando datos de todas las fuentes...');
                 await castillayleon();
                 combinarResultados({
-                    registrosCargados: getInsertadasCorrectamenteCYL(),
-                    registrosReparados: getModificadosCYL(),
-                    registrosRechazados: getDescartadosCYL()
+                    registrosCargados: getInsertadasCorrectamenteCL(),
+                    registrosReparados: getModificadosCL(),
+                    registrosRechazados: getDescartadosCL()
                 });
                 await euskadi();
                 combinarResultados({
@@ -130,6 +132,19 @@ app.get('/api/extractores', async (req, res) => {
             error: error.message
         });
     }
+});
+
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3003'); // Permite el origen del frontend
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'); // Métodos permitidos
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Encabezados permitidos
+    res.setHeader('Access-Control-Allow-Credentials', 'true'); // Permitir cookies o credenciales si es necesario
+
+    // Respuesta automática a preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204); // Sin contenido para preflight
+    }
+    next();
 });
 
 // Inicializar el servidor

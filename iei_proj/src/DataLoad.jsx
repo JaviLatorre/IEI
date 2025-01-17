@@ -26,8 +26,21 @@ const DataLoad = () => {
       setSelectedSources((prev) => ({
         ...prev,
         [name]: checked,
-        selectAll: false, // Si se selecciona individualmente, desmarca "Seleccionar todas"
+        selectAll: false, // Desmarca "Seleccionar todas" si se selecciona individualmente
       }));
+    }
+  };
+
+  const fetchDataFromSources = async (source) => {
+    try {
+      const response = await fetch(`http://localhost:3004/api/extractores?fuente=${encodeURIComponent(source)}`);
+      if (!response.ok) {
+        throw new Error(`Error al cargar datos desde ${source}: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (err) {
+      console.error(err);
+      throw new Error(`No se pudo cargar datos desde ${source}.`);
     }
   };
 
@@ -44,23 +57,10 @@ const DataLoad = () => {
     }
 
     setLoading(true);
-    setError(null); // Limpiar cualquier error previo
+    setError(null);
 
     try {
-      const responses = await Promise.all(
-        sources.map((fuente) =>
-          fetch(`api/extractores?fuente=${encodeURIComponent(fuente)}`, {  
-            method: "GET",
-          })
-            .then((res) => res.json())
-            .catch((err) => {
-              console.error(`Error al cargar datos desde ${fuente}:`, err);
-              return { message: `Error al cargar datos desde ${fuente}.` };
-            })
-        )
-      );
-
-      // Combinar resultados de las fuentes
+      const responses = await Promise.all(sources.map(fetchDataFromSources));
       const combinedResults = responses.reduce(
         (acc, current) => {
           if (current.resultados) {
@@ -78,49 +78,34 @@ const DataLoad = () => {
         repaired: combinedResults.repaired,
         rejected: combinedResults.rejected,
       });
-    } catch (error) {
-      console.error("Error al cargar los datos:", error);
-      setError("Error al cargar los datos. Consulte la consola para más detalles.");
+    } catch (err) {
+      console.error("Error al cargar los datos:", err);
+      setError("No se pudieron cargar los datos. Intente nuevamente.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleClearData = async () => {
-    const sources = [];
-    if (selectedSources.castillaLeon) sources.push("Castilla y León");
-    if (selectedSources.comunitatValenciana) sources.push("Comunitat Valenciana");
-    if (selectedSources.euskadi) sources.push("Euskadi");
-    if (selectedSources.selectAll) sources.push("Seleccionar todas");
-
-    if (sources.length === 0) {
-      alert("Seleccione al menos una fuente de datos.");
-      return;
-    }
+    setLoading(true);
+    setError(null);
 
     try {
-      const responses = await Promise.all(
-        sources.map((fuente) =>
-          fetch(`/api/borrar-datos`, { method: "DELETE" })
-            .then((res) => res.json())
-            .catch((err) => {
-              console.error("Error al borrar los datos:", err);
-              return { message: "Error al borrar los datos." };
-            })
-        )
-      );
-
-      // Informar al usuario sobre la eliminación exitosa
-      const errorOccurred = responses.some((response) => response.error);
-      if (errorOccurred) {
-        alert("Error al borrar los datos. Consulte la consola.");
-      } else {
-        alert("Datos borrados exitosamente.");
-        setResults(null); // Limpiar resultados tras el borrado
+      const response = await fetch(`http://localhost:3004/api/borrar-datos`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error(`Error al borrar los datos: ${response.statusText}`);
       }
-    } catch (error) {
-      console.error("Error al borrar los datos:", error);
-      alert("Error al borrar los datos. Consulte la consola.");
+
+      const data = await response.json();
+      alert(data.message || "Datos borrados exitosamente.");
+      setResults(null);
+    } catch (err) {
+      console.error("Error al borrar los datos:", err);
+      setError("No se pudieron borrar los datos. Intente nuevamente.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -131,7 +116,7 @@ const DataLoad = () => {
       comunitatValenciana: false,
       euskadi: false,
     });
-    setResults(null); // Limpiar resultados al cancelar
+    setResults(null);
   };
 
   return (
@@ -147,7 +132,7 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Seleccionar todas
-        </label>{" "}
+        </label>
         <br />
         <label>
           <input
@@ -157,7 +142,7 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Castilla y León
-        </label>{" "}
+        </label>
         <br />
         <label>
           <input
@@ -167,7 +152,7 @@ const DataLoad = () => {
             onChange={handleCheckboxChange}
           />
           Comunitat Valenciana
-        </label>{" "}
+        </label>
         <br />
         <label>
           <input
@@ -180,26 +165,18 @@ const DataLoad = () => {
         </label>
       </div>
       <div className="data-load-buttons">
-        <button
-          type="button"
-          className="cancel2-button"
-          onClick={handleCancel}
-        >
+        <button type="button" className="cancel2-button" onClick={handleCancel}>
           Cancelar
         </button>
         <button
           onClick={handleLoadData}
           type="button"
           className="load-button"
-          disabled={loading} // Deshabilitar el botón mientras carga
+          disabled={loading}
         >
           {loading ? "Cargando..." : "Cargar"}
         </button>
-        <button
-          onClick={handleClearData}
-          type="button"
-          className="reset-button"
-        >
+        <button onClick={handleClearData} type="button" className="reset-button">
           Borrar almacén de datos
         </button>
       </div>
@@ -213,9 +190,7 @@ const DataLoad = () => {
             <ul>
               {results.repaired.length > 0 ? (
                 results.repaired.map((item, index) => (
-                  <li key={index}>
-                    {`Fuente: ${item.fuente}, Nombre: ${item.nombre}, Localidad: ${item.localidad}, Motivo del error: ${item.motivoError}, Operación: ${item.operacion}`}
-                  </li>
+                  <li key={index}>{item}</li>
                 ))
               ) : (
                 <li>No hay registros reparados</li>
@@ -225,9 +200,7 @@ const DataLoad = () => {
             <ul>
               {results.rejected.length > 0 ? (
                 results.rejected.map((item, index) => (
-                  <li key={index}>
-                    {`Fuente: ${item.fuente}, Nombre: ${item.nombre}, Localidad: ${item.localidad}, Motivo del error: ${item.motivoError}`}
-                  </li>
+                  <li key={index}>{item}</li>
                 ))
               ) : (
                 <li>No hay registros rechazados</li>

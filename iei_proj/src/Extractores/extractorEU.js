@@ -10,6 +10,9 @@ let insertadas_corregidas = 0;
 let descartadas = 0;
 let modificado = false;
 
+let motivosDescarte = [];
+let modificaciones = [];
+
 let provincia = "";
 
 // Función para consumir la API y devolver el archivo de datos en JSON
@@ -45,7 +48,9 @@ async function euskadi(){
         console.log('Todos los monumentos han sido procesados.');
         console.log('Monumentos insetados correctamente: ', insertadas_correctamente)
         console.log('Monumentos corregidos: ', insertadas_corregidas)
+        console.log('Modificaciones realizadas: ', modificaciones)
         console.log('Monumentos descartados: ', descartadas)
+        console.log('Motivos de descarte: ', motivosDescarte)
     } catch (err) {
         console.error('Error:', err);
     }
@@ -135,15 +140,18 @@ async function guardarEnBD(monumento) {
 
 async function verificarProvincia(){
     if(provincia == ""){
+        motivosDescarte.push("Provincia no disponible")
         descartadas++
         return false
     }
     else if(provincia == "Araba/Álava"){
         provincia = "Araba"
+        modificaciones.push("Provincia cambiada a Araba")
         modificado = true
         return true
     }
     else if (provincia!= "Gipuzkoa" && provincia != "Bizkaia"){
+        motivosDescarte.push("Provincia no válida")
         descartadas++
         return false
     }
@@ -152,12 +160,14 @@ async function verificarProvincia(){
 
 async function verificarMunicipio(){
     if(municipio == ""){
+        motivosDescarte.push("Municipio no disponible")
         descartadas++
         return false
     }
     else if(municipio.includes('/')){
         const textoAntes = municipio.split('/')[0];
         municipio = textoAntes
+        modificaciones.push("Municipio cambiado a " + textoAntes + " (dividido por '/')")
         modificado = true
         return true
     }
@@ -167,6 +177,7 @@ async function verificarMunicipio(){
 async function verificarCodigoPostal() {
     // Comprueba que todos los códigos postales tengan 5 dígitos
     if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
+      motivosDescarte.push("Código postal no válido")
       descartadas++
       return false
     }
@@ -175,25 +186,32 @@ async function verificarCodigoPostal() {
 
 async function verificarMonumento() {
     if (nombreMonumento == "") {
+        motivosDescarte.push("Nombre no disponible")
         descartadas++
         return false
     } else if (descripcionMonumento == "") {
+        motivosDescarte.push("Descripción no disponible")
         descartadas++
         return false
     } else if (codigoPostal == "") {
+        motivosDescarte.push("Código postal no disponible")
         descartadas++
         return false
     } else if (!codigoPostal.startsWith(territoryCode)) {
+        motivosDescarte.push("Código postal fuera de rango territorial")
         descartadas++
         return false
     } else if (direccionFinal == "") {
         direccionFinal = "Dirección no disponible"
+        modificaciones.push("Dirección cambiada a 'Dirección no disponible'")
         modificado++
         return true
     } else if (longitud == "" || latitud == "") {
+        motivosDescarte.push("Coordenadas no disponibles")
         descartadas++
         return false
     } else if (longitud > 90 || latitud > 90 || longitud < -90 || latitud < -90) {
+        motivosDescarte.push("Coordenadas fuera de rango")
         descartadas++
         return false
     }
@@ -212,4 +230,12 @@ function getDescartadosEU() {
     return descartadas;
 }
 
-module.exports = { euskadi, getInsertadasCorrectamenteEU, getModificadosEU, getDescartadosEU };
+function getMotivosDescarte() {
+    return motivosDescarte;
+}
+
+function getModificaciones() {
+    return modificaciones;
+}
+
+module.exports = { euskadi, getInsertadasCorrectamenteEU, getModificadosEU, getDescartadosEU, getMotivosDescarte, getModificaciones };

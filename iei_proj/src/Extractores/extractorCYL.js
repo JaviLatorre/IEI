@@ -249,6 +249,4 @@ function getDescartadosCL() {
     return descartadas;
 }
 
-castillayleon()
-
 module.exports = { castillayleon, getInsertadasCorrectamenteCL, getModificadosCL, getDescartadosCL };
