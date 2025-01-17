@@ -191,7 +191,7 @@ const DataLoad = () => {
               {results.repaired.length > 0 ? (
                 results.repaired.map((item, index) => (
                   <li key={index}>
-                    {`Fuente: ${item.fuente}, Nombre: ${item.nombre}, Localidad: ${item.localidad}, Motivo Error: ${item.motivoError}`}
+                    {`Fuente: ${item.fuente}, Nombre: ${item.nombre}, Localidad: ${item.localidad}, Motivo Error: ${item.motivoError}, Modificaciones: ${item.operacion}`}
                   </li>
                 ))
               ) : (
