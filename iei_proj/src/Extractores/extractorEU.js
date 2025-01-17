@@ -184,6 +184,15 @@ async function verificarMonumento(monumento) {
     return true;
 }
 
+function determinarTipo(denominacion) {
+    const lowername = denominacion.toLowerCase();
+    if (lowername.includes('iglesia') || lowername.includes('ermita')) return 'Iglesia-Ermita';
+    if (lowername.includes('monasterio') || lowername.includes('convento')) return 'Monasterio-Convento';
+    if (lowername.includes('castillo') || lowername.includes('fortaleza') || lowername.includes('torre')) return 'Castillo-Fortaleza-Torre';
+    if (lowername.includes('palacio') || lowername.includes('casa')) return 'Edificio singular';
+    return 'Otros';
+}
+
 // Función para registrar reparaciones y rechazos
 function registrarReparacion(monumento, motivo, operacion) {
     console.log(monumento);
