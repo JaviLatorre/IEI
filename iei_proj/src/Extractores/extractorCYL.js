@@ -5,7 +5,10 @@ let insertadas_correctamente = 0;
 let insertadas_corregidas = 0;
 let descartadas = 0;
 let modificado = false;
-
+let nombresProcesados = [];
+let motivosDescarte = "";
+let modificaciones = "";
+let motivoModificacion = "";
 let registrosReparadosCYL = [];
 let registrosRechazadosCYL = [];
 
@@ -28,9 +31,16 @@ async function castillayleon() {
   
     registrosReparadosCYL.length = 0;
     registrosRechazadosCYL.length = 0;
+    insertadas_correctamente = 0;
+    insertadas_corregidas = 0;
+    descartadas = 0;
+    modificado = false;
+
 
     try {
         const data = await extraerDatos();
+
+        console.log(data.monumentos.monumento);
 
         for (const monumento of data.monumentos.monumento) {
             modificado = false;
@@ -55,24 +65,34 @@ async function guardarEnBD(monumento) {
         
         let correcto = await verificarProvincia();
         if (!correcto) {
-            registrarRechazo(monumento, "Provincia no válida "+ provincia);
+            registrarRechazo(monumento, motivosDescarte);
             return;
         }
 
         municipio = monumento.poblacion.municipio;
         correcto = await verificarMunicipio();
         if (!correcto) {
-            registrarRechazo(monumento, "Municipio no válido");
+            registrarRechazo(monumento, motivosDescarte);
             return;
         }
 
         const nombreMonumento = monumento.nombre;
         const descripcionMonumento = monumento.Descripcion;
-
-        if (!nombreMonumento || !descripcionMonumento) {
-            registrarRechazo(monumento, "Datos del monumento incompletos");
+        const latitud = monumento.coordenadas.latitud;
+        const longitud = monumento.coordenadas.longitud;
+        const codigoPostal = monumento.codigoPostal;
+        correcto = await verificarMonumento(monumento, latitud, longitud, codigoPostal, nombreMonumento, municipio);
+        if (!correcto) {
+            registrarRechazo(monumento, motivosDescarte);
             return;
         }
+
+        correcto = await validarCodigoPostal(codigoPostal, provincia);
+        if (!correcto) {
+            registrarRechazo(monumento, motivosDescarte);
+            return;
+        }
+        
 
         // Guardar en la base de datos
         await supabase.from('Provincia').insert([{ nombre: provincia }]);
@@ -89,10 +109,11 @@ async function guardarEnBD(monumento) {
         }]);
 
         if (modificado) {
-            registrarReparacion(monumento, "Datos corregidos");
+            registrarReparacion(monumento, motivoModificacion, modificaciones);
             insertadas_corregidas++;
         } else {
             insertadas_correctamente++;
+            nombresProcesados.push(nombreMonumento);
         }
     } catch (err) {
         console.error('Error guardando en BD:', err);
@@ -104,11 +125,13 @@ async function guardarEnBD(monumento) {
 // Funciones auxiliares de validación
 async function verificarProvincia() {
     if (!provincia) {
+        motivosDescarte = "Provincia no disponible";
         descartadas++;
         return false;
     }
     const provinciasValidas = ["Ávila", "Burgos", "León", "Palencia", "Salamanca", "Segovia", "Soria", "Valladolid", "Zamora"];
     if (!provinciasValidas.includes(provincia)) {
+        motivosDescarte = "Provincia no válida";
         descartadas++;
         return false;
     }
@@ -117,11 +140,92 @@ async function verificarProvincia() {
 
 async function verificarMunicipio() {
     if (!municipio) {
+        motivosDescarte = 'Municipio no disponible';
         descartadas++;
         return false;
     }
+
+    if (municipio.includes('/')) {
+        municipio = municipio.split('/')[0];
+        modificaciones = "Municipio dividido y modificado";
+        motivoModificacion = "Nombre de municipio con /";
+        modificado = true;
+      }
+
     return true;
 }
+
+// Función para verificar el monumento
+async function verificarMonumento(monumento, longitud, latitud, codigoPostal, nombreMonumento, municipio) {
+    if (!monumento) {
+      motivosDescarte = 'Monumento nulo';
+      descartadas++;
+      return false;
+    }
+  
+    if (!latitud || !longitud) {
+      motivosDescarte = 'Coordenadas incompletas';
+      descartadas++;
+      return false;
+    }
+  
+    if (!/^[0-9.-]+$/.test(longitud)) {
+      motivosDescarte = `Longitud inválida: ${longitud}`;
+      descartadas++;
+      return false;
+    }
+  
+    if (!codigoPostal) {
+      motivosDescarte = 'Código postal no disponible';
+      descartadas++;
+      return false;
+    }
+  
+    if (nombresProcesados.includes(nombreMonumento)) {
+      motivosDescarte = `Monumento duplicado: ${nombreMonumento}`;
+      descartadas++;
+      return false;
+    }
+  
+    return true;
+  }
+
+  // Función para validar el código postal
+function validarCodigoPostal(codigoPostal, provincia) {
+    if (!codigoPostal) {
+      motivosDescarte = 'Código postal no disponible';
+      descartadas++;
+      return false;
+    }
+  
+    codigoPostal = codigoPostal.toString().trim();
+  
+    if ((provincia === "Ávila" || provincia === "Burgos") && codigoPostal.length === 4) {
+        modificaciones = "Código postal cambiado a " + "0" + codigoPostal;
+        motivoModificacion = "Código postal de 4 dígitos porque empieza por 0";
+      modificado = true;
+      return "0" + codigoPostal;
+    }
+  
+    if ((provincia === "León" && !codigoPostal.startsWith("24")) || (provincia === "Palencia" && !codigoPostal.startsWith("34")) 
+      || (provincia === "Salamanca" && !codigoPostal.startsWith("37")) || (provincia === "Segovia" && !codigoPostal.startsWith("40"))
+      || (provincia === "Soria" && !codigoPostal.startsWith("42")) || (provincia === "Valladolid" && !codigoPostal.startsWith("47"))
+      || (provincia === "Zamora" && !codigoPostal.startsWith("49")) || (provincia === "Ávila" && !codigoPostal.startsWith("04"))
+      || (provincia === "Burgos" && !codigoPostal.startsWith("09"))
+    ) {
+      motivosDescarte = `Código postal inválido: ${codigoPostal}`;
+      descartadas++;
+      return false;
+    }
+  
+    if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
+      motivosDescarte = `Código postal inválido: ${codigoPostal}`;
+      descartadas++;
+      return false;
+    }
+  
+    return codigoPostal;
+  }
 
 // Función para determinar el tipo de monumento
 function determinarTipo(denominacion) {
@@ -134,12 +238,13 @@ function determinarTipo(denominacion) {
 }
 
 // Funciones para registrar reparaciones y rechazos
-function registrarReparacion(monumento, motivo) {
+function registrarReparacion(monumento, motivo, operacion) {
     registrosReparadosCYL.push({
         fuente: "Castilla y León",
         nombre: monumento.nombre,
-        localidad: monumento.municipio,
+        localidad: monumento.poblacion.municipio,
         motivoError: motivo,
+        operacion: operacion,
     });
 }
 
@@ -147,7 +252,7 @@ function registrarRechazo(monumento, motivo) {
     registrosRechazadosCYL.push({
         fuente: "Castilla y León",
         nombre: monumento.nombre,
-        localidad: monumento.municipio,
+        provincia: monumento.poblacion.provincia,
         motivoError: motivo,
     });
 }

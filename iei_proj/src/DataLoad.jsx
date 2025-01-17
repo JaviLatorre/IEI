@@ -33,7 +33,7 @@ const DataLoad = () => {
 
   const fetchDataFromSources = async (source) => {
     try {
-      const response = await fetch(`http://localhost:3004/api/extractores?fuente=${encodeURIComponent(source)}`);
+      const response = await fetch(`http://localhost:3004/api/extractores?fuente=${encodeURIComponent(source)}`, {method: 'POST'});
       if (!response.ok) {
         throw new Error(`Error al cargar datos desde ${source}: ${response.statusText}`);
       }
@@ -65,8 +65,8 @@ const DataLoad = () => {
         (acc, current) => {
           if (current.resultados) {
             acc.loadedCount += current.resultados.registrosCargados || 0;
-            acc.repaired.push(...current.resultados.registrosReparados);
-            acc.rejected.push(...current.resultados.registrosRechazados);
+            acc.repaired.push(current.resultados.registrosReparados);
+            acc.rejected.push(current.resultados.registrosRechazados);
           }
           return acc;
         },

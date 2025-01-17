@@ -4,3 +4,7 @@
 node_modules/.package-lock.json
 node_modules/selenium-webdriver/bidi/browsingContext.js
 node_modules/selenium-webdriver/bidi/continueRequestParameters.js
+iei_proj/src/FuentesDeDatos/bienes_inmuebles_interes_cultural_EntregaFinal.json
+iei_proj/src/FuentesDeDatos/bienes_inmuebles_interes_cultural(Entrega 1).json
+iei_proj/src/FuentesDeDatos/monumentos_EntregaFinal.json
+iei_proj/src/FuentesDeDatos/monumentosEntrega1.json

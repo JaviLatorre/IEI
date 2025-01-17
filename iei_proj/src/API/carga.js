@@ -16,7 +16,7 @@ app.use(express.json());
 
 // Endpoint para borrar los datos
 app.delete('/api/borrar-datos', async (req, res) => {
-    res.set('Access-Control-Allow-Origin', 'http://localhost:3003');
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
     try {
         console.log('Eliminando los datos de todas las tablas...');
         await eliminarBD();
@@ -32,8 +32,8 @@ app.delete('/api/borrar-datos', async (req, res) => {
 
 
 
-app.get('/api/extractores', async (req, res) => {
-    res.set('Access-Control-Allow-Origin', 'http://localhost:3003');
+app.post('/api/extractores', async (req, res) => {
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
     const { fuente } = req.query; 
     const extractoresDisponibles = [
         'Castilla y León',
@@ -52,13 +52,13 @@ app.get('/api/extractores', async (req, res) => {
 
     try {
         let resultados = {
-            registrosCargados: 0,
+            registrosCargadosCorrectamente: 0,
             registrosReparados: [],
             registrosRechazados: []
         };
 
         const combinarResultados = (nuevosResultados) => {
-            resultados.registrosCargados += nuevosResultados.registrosCargados || 0;
+            resultados.registrosCargadosCorrectamente = nuevosResultados.registrosCargados || 0;
             resultados.registrosReparados = resultados.registrosReparados.concat(nuevosResultados.registrosReparados || []);
             resultados.registrosRechazados = resultados.registrosRechazados.concat(nuevosResultados.registrosRechazados || []);
         };

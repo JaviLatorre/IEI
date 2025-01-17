@@ -6,8 +6,9 @@ let insertadas_corregidas = 0;
 let descartadas = 0;
 let modificado = false;
 
-let motivosDescarte = [];
-let modificaciones = [];
+let motivosDescarte = "";
+let modificaciones = "";
+let motivoModificacion = "";
 let registrosReparadosEU = [];
 let registrosRechazadosEU = [];
 
@@ -29,7 +30,11 @@ async function extraerDatos() {
 async function euskadi() {
     registrosReparadosEU.length = 0;
     registrosRechazadosEU.length = 0;
-
+    insertadas_correctamente = 0;
+    insertadas_corregidas = 0;
+    descartadas = 0;
+    modificado = false;
+    
     try {
         const data = await extraerDatos();
 
@@ -64,27 +69,27 @@ async function guardarEnBD(monumento) {
     const territoryCode = monumento.territorycode;
 
     if (!(await verificarProvincia())) {
-        registrarRechazo(monumento, "Provincia no válida");
+        registrarRechazo(monumento, motivosDescarte);
         return;
     }
 
     if (!(await verificarMunicipio())) {
-        registrarRechazo(monumento, "Municipio no válido o no disponible");
+        registrarRechazo(monumento, motivosDescarte);
         return;
     }
 
     if (!(await verificarCodigoPostal(codigoPostal))) {
-        registrarRechazo(monumento, "Código postal inválido");
+        registrarRechazo(monumento, motivosDescarte);
         return;
     }
 
     if (!(await verificarMonumento(monumento))) {
-        registrarRechazo(monumento, "Datos del monumento incompletos o inválidos");
+        registrarRechazo(monumento, motivosDescarte);
         return;
     }
 
     if (modificado) {
-        registrarReparacion(monumento, "Se corrigieron algunos datos", "Modificación aplicada");
+        registrarReparacion(monumento, motivoModificacion, modificaciones);
         insertadas_corregidas++;
     } else {
         insertadas_correctamente++;
@@ -113,18 +118,19 @@ async function guardarEnBD(monumento) {
 // Funciones de verificación y validación
 async function verificarProvincia() {
     if (!provincia) {
-        motivosDescarte.push("Provincia no disponible");
+        motivosDescarte = "Provincia no disponible";
         descartadas++;
         return false;
     }
     if (provincia === "Araba/Álava") {
         provincia = "Araba";
-        modificaciones.push("Provincia cambiada a Araba");
+        modificaciones = "Provincia cambiada a Araba (Separar / y borrar Álava)";
+        motivoModificacion = "Nombre de provincia con /";
         modificado = true;
         return true;
     }
     if (!["Gipuzkoa", "Bizkaia", "Araba"].includes(provincia)) {
-        motivosDescarte.push("Provincia no válida");
+        motivosDescarte = "Provincia no válida";
         descartadas++;
         return false;
     }
@@ -133,13 +139,14 @@ async function verificarProvincia() {
 
 async function verificarMunicipio() {
     if (!municipio) {
-        motivosDescarte.push("Municipio no disponible");
+        motivosDescarte = "Municipio no disponible";
         descartadas++;
         return false;
     }
     if (municipio.includes('/')) {
         municipio = municipio.split('/')[0];
-        modificaciones.push("Municipio dividido y modificado");
+        modificaciones = "Municipio dividido y modificado";
+        motivoModificacion = "Nombre de municipio con /";
         modificado = true;
     }
     return true;
@@ -147,7 +154,7 @@ async function verificarMunicipio() {
 
 async function verificarCodigoPostal(codigoPostal) {
     if (!codigoPostal || codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
-        motivosDescarte.push("Código postal no válido");
+        motivosDescarte = "Código postal inexistente o de formato no válido";
         descartadas++;
         return false;
     }
@@ -156,9 +163,23 @@ async function verificarCodigoPostal(codigoPostal) {
 
 async function verificarMonumento(monumento) {
     if (!monumento.documentName || !monumento.documentDescription|| !monumento.latwgs84 || !monumento.lonwgs84) {
-        motivosDescarte.push("Datos del monumento incompletos");
+        motivosDescarte = "Datos del monumento incompletos";
         descartadas++;
         return false;
+    } else if (!monumento.postalCode.startsWith(monumento.territorycode)) {
+        motivosDescarte = "Código postal fuera de rango";
+        descartadas++
+        return false
+    } else if (monumento.firstAddress == "") {
+        direccionFinal = "Dirección no disponible"
+        modificaciones = "Evitar null poniendo dirección no disponible"
+        motivoModificacion = "Dirección del monumento es Null";
+        modificado = true;
+        return true
+    } else if (monumento.lonwgs84 > 90 || monumento.latwgs84 > 90 || monumento.lonwgs84 < -90 || monumento.latwgs84 < -90) {
+        motivosDescarte = "Longitud o latitud fuera de rango";
+        descartadas++
+        return false
     }
     return true;
 }

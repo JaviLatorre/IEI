@@ -8,7 +8,10 @@ let insertadas_correctamente = 0;
 let insertadas_corregidas = 0;
 let descartadas = 0;
 let modificado = false;
-
+let nombresProcesados = [];
+let motivosDescarte = "";
+let modificaciones = "";
+let motivoModificacion = "";
 let registrosReparadosVLC = [];
 let registrosRechazadosVLC = [];
 
@@ -32,9 +35,15 @@ async function extraerDatos() {
 async function valencia() {
     registrosReparadosVLC.length = 0;
     registrosRechazadosVLC.length = 0;
+    insertadas_correctamente = 0;
+    insertadas_corregidas = 0;
+    descartadas = 0;
+    modificado = false;
 
     try {
         const data = await extraerDatos();
+
+        console.log(data);
 
         for (const monumento of data) {
             modificado = false;
@@ -59,26 +68,26 @@ async function guardarEnBD(monumento) {
 
         let correcto = await verificarProvincia();
         if (!correcto) {
-            registrarRechazo(monumento, "Provincia no válida");
+            registrarRechazo(monumento, motivosDescarte);
             return;
         }
 
         municipio = monumento.MUNICIPIO;
         correcto = await verificarMunicipio(municipio);
         if (!correcto) {
-            registrarRechazo(monumento, "Municipio no válido");
+            registrarRechazo(monumento, motivosDescarte);
             return;
         }
 
         correcto = await verificarNombre(monumento.DENOMINACION);
         if (!correcto) {
-            registrarRechazo(monumento, "Nombre no válido");
+            registrarRechazo(monumento, motivosDescarte);
             return;
         }
 
         correcto = await verificarCoordenadas(monumento.UTMNORTE, monumento.UTMESTE);
         if (!correcto) {
-            registrarRechazo(monumento, "Coordenadas no válidas");
+            registrarRechazo(monumento, motivosDescarte);
             return;
         }
 
@@ -91,9 +100,21 @@ async function guardarEnBD(monumento) {
             return;
         }
 
+        if (nombresProcesados.includes(nombreMonumento)) {
+            motivosDescarte = `Monumento duplicado: ${nombreMonumento}`;
+            descartadas++;
+            registrarRechazo(monumento, "Monumento duplicado: ${nombreMonumento}");
+            return ;
+          }
+
         let codPost = await obtenerCodigoPostal(latitud, longitud);
         let direccion = await obtenerDireccion(latitud, longitud);
         codigoPostal = validarCodigoPostal(codPost, monumento.PROVINCIA);
+
+        if (!codigoPostal) {
+            registrarRechazo(monumento, motivosDescarte);
+            return;
+        }
 
         if (nombresInsertados.includes(monumento.DENOMINACION)) {
             registrarRechazo(monumento, "Monumento duplicado");
@@ -119,10 +140,11 @@ async function guardarEnBD(monumento) {
         }]);
 
         if (modificado) {
-            registrarReparacion(monumento, "Datos corregidos", "Modificación aplicada");
+            registrarReparacion(monumento, motivoModificacion, modificaciones);
             insertadas_corregidas++;
         } else {
             insertadas_correctamente++;
+            nombresProcesados.push(nombreMonumento);
         }
     } catch (err) {
         console.error('Error guardando en BD', err);
@@ -134,15 +156,18 @@ async function guardarEnBD(monumento) {
 // Funciones auxiliares de validación
 async function verificarProvincia() {
     if (!provincia) {
+        motivosDescarte = "Provincia no disponible";
         descartadas++;
         return false;
     }
     if (provincia === "CASTELLON") {
         provincia = "CASTELLÓN";
+        modificaciones = "Añadida la tilde de Castelón";
+        motivoModificacion = "'Castellon' sin tilde"
         modificado = true;
-        return true;
     }
     if (!["ALICANTE", "CASTELLÓN", "VALENCIA"].includes(provincia)) {
+        motivosDescarte = "Provincia incorrecta";
         descartadas++;
         return false;
     }
@@ -151,6 +176,7 @@ async function verificarProvincia() {
 
 async function verificarMunicipio(municipio) {
     if (!municipio) {
+        motivosDescarte = "Municipio no disponible";
         descartadas++;
         return false;
     }
@@ -159,6 +185,7 @@ async function verificarMunicipio(municipio) {
 
 async function verificarNombre(nombre) {
     if (!nombre) {
+        motivosDescarte = "Nombre del monumento no disponible";
         descartadas++;
         return false;
     }
@@ -167,6 +194,7 @@ async function verificarNombre(nombre) {
 
 async function verificarCoordenadas(UTMNORTE, UTMESTE) {
     if (!UTMNORTE || !UTMESTE) {
+        motivosDescarte = "Faltan coordenadas ";
         descartadas++;
         return false;
     }
@@ -174,8 +202,48 @@ async function verificarCoordenadas(UTMNORTE, UTMESTE) {
 }
 
 async function obtenerCoordenadas(monumento) {
-    // Aquí implementar la lógica para obtener coordenadas
-    return { latitud: null, longitud: null }; // Cambiar por implementación real
+    let driver;
+  try{
+    driver = await new Builder().forBrowser('chrome').build();
+
+    //para acceder a la página web 
+    await driver.get('https://www.tool-online.com/es/conversion-coordenadas.php'); 
+
+    await driver.findElement(By.xpath("/html/body/div[7]/div[2]/div[2]/div[3]/div[2]/button[1]")).click()
+
+    let seleccionPaisOrigen = new Select(driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[1]/div[1]/div[4]/select")))
+    await seleccionPaisOrigen.selectByVisibleText('Espana')
+
+    let seleccionFormatoOrigen = new Select(driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[1]/div[1]/div[5]/div[1]/select")))
+    await seleccionFormatoOrigen.selectByVisibleText('WGS 84 / UTM zone 30N')
+
+    let seleccionPaisDestino = new Select(driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[4]/select")))
+    await seleccionPaisDestino.selectByVisibleText('Espana')
+
+    let seleccionFormatoDestino = new Select(driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[5]/div[1]/select")))
+    await seleccionFormatoDestino.selectByVisibleText('ETRS89')
+
+    await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[1]/div[1]/div[1]/div[2]/div[2]/div[1]/input")).sendKeys(monumento.UTMNORTE)
+    await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[1]/div[1]/div[2]/div[2]/div[2]/div[1]/input")).sendKeys(monumento.UTMESTE)
+
+    await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[2]/button")).click()
+
+    const latitud = await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[2]/div[2]/div[2]/div[1]/input")).getAttribute('value');
+    const longitud = await driver.findElement(By.xpath("/html/body/div[5]/div/div[2]/div[1]/div/div[2]/div[3]/div[1]/div[1]/div[2]/div[2]/div[1]/input")).getAttribute('value');
+
+    return{
+        latitud: parseFloat(latitud),
+        longitud: parseFloat(longitud),
+    };
+
+  }catch(err){
+
+    console.error('Error obteniendo coordenadas', err);
+    return {latitud: null, longitud: null}; 
+  }finally{
+    if( driver) await driver.quit();
+
+  }
 }
 
 async function obtenerCodigoPostal(latitud, longitud) {
@@ -201,6 +269,7 @@ async function obtenerDireccion(latitud, longitud) {
 
 function validarCodigoPostal(codigoPostal, provincia) {
     if (!codigoPostal || codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
+        motivosDescarte = "Código postal no disponible o no válido";
         return null;
     }
     return codigoPostal;
@@ -231,7 +300,7 @@ function registrarRechazo(monumento, motivo) {
     registrosRechazadosVLC.push({
         fuente: "Valencia",
         nombre: monumento.DENOMINACION,
-        localidad: monumento.MUNICIPIO,
+        localidad: monumento.PROVINCIA,
         motivoError: motivo,
     });
 }
