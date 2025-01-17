@@ -303,7 +303,7 @@ function registrarRechazo(monumento, motivo) {
     registrosRechazadosVLC.push({
         fuente: "Valencia",
         nombre: monumento.DENOMINACION,
-        localidad: monumento.PROVINCIA,
+        localidad: monumento.MUNICIPIO,
         motivoError: motivo,
     });
 }
