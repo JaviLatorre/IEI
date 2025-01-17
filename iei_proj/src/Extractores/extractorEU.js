@@ -14,6 +14,8 @@ let registrosRechazadosEU = [];
 
 let provincia = "";
 
+let direccionFinal = "";
+
 // Función para consumir la API y devolver el archivo de datos en JSON
 async function extraerDatos() {
     const fetch = (await import('node-fetch')).default;
@@ -63,7 +65,7 @@ async function guardarEnBD(monumento) {
     const nombreMonumento = monumento.documentName;
     const descripcionMonumento = monumento.documentDescription;
     const codigoPostal = monumento.postalCode;
-    const direccionFinal = monumento.firstAddress;
+    direccionFinal = monumento.firstAddress;
     const longitud = monumento.lonwgs84;
     const latitud = monumento.latwgs84;
     const territoryCode = monumento.territorycode;

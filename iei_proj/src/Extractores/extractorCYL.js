@@ -14,6 +14,8 @@ let registrosRechazadosCYL = [];
 
 let provincia = "";
 
+let codigoPostal = "";
+
 // Función para consumir la API y devolver los datos en JSON
 async function extraerDatos() {
     const fetch = (await import('node-fetch')).default;
@@ -80,7 +82,7 @@ async function guardarEnBD(monumento) {
         const descripcionMonumento = monumento.Descripcion;
         const latitud = monumento.coordenadas.latitud;
         const longitud = monumento.coordenadas.longitud;
-        const codigoPostal = monumento.codigoPostal;
+        codigoPostal = monumento.codigoPostal;
         correcto = await verificarMonumento(monumento, latitud, longitud, codigoPostal, nombreMonumento, municipio);
         if (!correcto) {
             registrarRechazo(monumento, motivosDescarte);
@@ -104,7 +106,7 @@ async function guardarEnBD(monumento) {
             descripcion: descripcionMonumento,
             latitud: monumento.coordenadas.latitud,
             longitud: monumento.coordenadas.longitud,
-            codigo_postal: monumento.codigoPostal || 'Código postal no disponible',
+            codigo_postal: codigoPostal || 'Código postal no disponible',
             en_localidad: municipio,
         }]);
 
@@ -201,10 +203,11 @@ function validarCodigoPostal(codigoPostal, provincia) {
     codigoPostal = codigoPostal.toString().trim();
   
     if ((provincia === "Ávila" || provincia === "Burgos") && codigoPostal.length === 4) {
-        modificaciones = "Código postal cambiado a " + "0" + codigoPostal;
+        codigoPostal = "0" + codigoPostal;
+        modificaciones = "Código postal cambiado a " + codigoPostal;
         motivoModificacion = "Código postal de 4 dígitos porque empieza por 0";
       modificado = true;
-      return "0" + codigoPostal;
+      return codigoPostal;
     }
   
     if ((provincia === "León" && !codigoPostal.startsWith("24")) || (provincia === "Palencia" && !codigoPostal.startsWith("34")) 
