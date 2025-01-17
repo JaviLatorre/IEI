@@ -100,6 +100,8 @@ async function guardarEnBD(monumento) {
             return;
         }
 
+        const nombreMonumento = monumento.DENOMINACION;
+
         if (nombresProcesados.includes(nombreMonumento)) {
             motivosDescarte = `Monumento duplicado: ${nombreMonumento}`;
             descartadas++;
