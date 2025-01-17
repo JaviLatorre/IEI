@@ -39,6 +39,7 @@ async function valencia() {
     insertadas_corregidas = 0;
     descartadas = 0;
     modificado = false;
+    nombresProcesados = [];
 
     try {
         const data = await extraerDatos();
@@ -99,6 +100,8 @@ async function guardarEnBD(monumento) {
             registrarRechazo(monumento, "Coordenadas no disponibles");
             return;
         }
+
+        const nombreMonumento = monumento.DENOMINACION;
 
         if (nombresProcesados.includes(nombreMonumento)) {
             motivosDescarte = `Monumento duplicado: ${nombreMonumento}`;

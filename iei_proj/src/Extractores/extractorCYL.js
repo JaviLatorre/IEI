@@ -37,6 +37,7 @@ async function castillayleon() {
     insertadas_corregidas = 0;
     descartadas = 0;
     modificado = false;
+    nombresProcesados = [];
 
 
     try {

@@ -64,9 +64,9 @@ const DataLoad = () => {
       const combinedResults = responses.reduce(
         (acc, current) => {
           if (current.resultados) {
-            acc.loadedCount += current.resultados.registrosCargados || 0;
-            acc.repaired.push(current.resultados.registrosReparados);
-            acc.rejected.push(current.resultados.registrosRechazados);
+            acc.loadedCount += current.resultados.registrosCargadosCorrectamente || 0;
+            acc.repaired = acc.repaired.concat(current.resultados.registrosReparados || []);
+            acc.rejected = acc.rejected.concat(current.resultados.registrosRechazados || []);
           }
           return acc;
         },
@@ -190,7 +190,9 @@ const DataLoad = () => {
             <ul>
               {results.repaired.length > 0 ? (
                 results.repaired.map((item, index) => (
-                  <li key={index}>{item}</li>
+                  <li key={index}>
+                    {`Fuente: ${item.fuente}, Nombre: ${item.nombre}, Localidad: ${item.localidad}, Motivo Error: ${item.motivoError}`}
+                  </li>
                 ))
               ) : (
                 <li>No hay registros reparados</li>
@@ -200,7 +202,9 @@ const DataLoad = () => {
             <ul>
               {results.rejected.length > 0 ? (
                 results.rejected.map((item, index) => (
-                  <li key={index}>{item}</li>
+                  <li key={index}>
+                    {`Fuente: ${item.fuente}, Nombre: ${item.nombre}, Localidad: ${item.localidad}, Motivo Error: ${item.motivoError}`}
+                  </li>
                 ))
               ) : (
                 <li>No hay registros rechazados</li>
