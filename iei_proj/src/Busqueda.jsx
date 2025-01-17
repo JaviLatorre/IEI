@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SearchForm from "./IGU/SearchForm";
 import MapComponent from "./IGU/MapComponent";
 import ResultsTable from "./IGU/ResultTable";
@@ -19,6 +19,9 @@ const Busqueda = () => {
     try {
       const queryParams = new URLSearchParams(filters).toString();
       console.log(queryParams);
+
+      const responseInicio = await fetch(`http://localhost:3005/mapa?${queryParams}`);
+      const dataMapa = await responseInicio.json();
 
       const response = await fetch(`http://localhost:3005/search?${queryParams}`);
       if (!response.ok) {

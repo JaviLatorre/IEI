@@ -14,8 +14,44 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // Middleware para procesar JSON
 app.use(express.json());
 
+app.get('/mapa', async (req, res) => {
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+    try {
+        const {data, error} = await supabase.from('Monumento').select('nombre', 'latitud', 'longitud')
+        // Maneja error de Supabase
+        if(error){
+            console.error('Error al buscar en Supabase: ', error);
+            return res.status(500).json({
+                 message: 'Error al buscar los monumentos en la base de datos.',
+                 error: error.message
+             });
+        }
 
-app.get('/search', async (req, res) =>{
+        // Devolver api
+        const respuestaAPI = data.map( (elemento) => ({
+                nombre: elemento.nombre,
+                latitud: elemento.latitud,
+                longitud: elemento.longitud,
+            })
+        )
+        return res.status(200).json({
+            ok: true,
+            message: 'Todos los monumentos recibidos.',
+            data: respuestaAPI,
+        });
+
+    }
+    catch(err) {
+        // Maneja error del servidor
+        console.error('Error en la API de busqueda en general: ', err);
+        return res.status(500).json({
+            message: 'Error interno del servidor.',
+            error: err.message
+        });
+    }
+})
+
+app.get('/search', async (req, res) => {
     res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
     console.log('Consulta:');
     try {
@@ -78,19 +114,7 @@ app.get('/search', async (req, res) =>{
         }
         else {
             // Responder con éxito
-            const respuestaAPI = await Promise.all(
-                data.map(async (elemento) => ({
-                    nombre: elemento.nombre,
-                    tipo: elemento.tipo,
-                    direccion: elemento.direccion,
-                    localidad: elemento.en_localidad,
-                    codPostal: elemento.codigo_postal,
-                    provincia: await localidadToProvincia(elemento.en_localidad),
-                    descripcion: elemento.descripcion,
-                    latitud: elemento.latitud,
-                    longitud: elemento.longitud,
-                }))
-            );
+            const respuestaAPI = await mapeoDatos(data)
             console.log(respuestaAPI[0])
             return res.status(200).json({
                 ok: true,
@@ -109,9 +133,25 @@ app.get('/search', async (req, res) =>{
     }
 })
 
+// Funcion para mapear los datos de la base de datos al formato web
+async function mapeoDatos(monumentos) {
+    return await Promise.all(
+        monumentos.map(async (elemento) => ({
+            nombre: elemento.nombre,
+            tipo: elemento.tipo,
+            direccion: elemento.direccion,
+            localidad: elemento.en_localidad,
+            codPostal: elemento.codigo_postal,
+            provincia: await localidadToProvincia(elemento.en_localidad),
+            descripcion: elemento.descripcion,
+            latitud: elemento.latitud,
+            longitud: elemento.longitud,
+        }))
+    )
+}
 
-
- async function localidadToProvincia(localidad, res){
+// Funcion para sacar la provincia segun la Localidad
+async function localidadToProvincia(localidad, res) {
     const {data, error} = await supabase.from('Localidad').select('en_provincia').eq('nombre', localidad).single()
      if (error) {
         console.error('Error al buscar en Supabase: ', error);
@@ -120,7 +160,9 @@ app.get('/search', async (req, res) =>{
                  error: error.message
              });     }
      return data.en_provincia;
- }
+}
+
+
 // Iniciar el servidor
 app.listen(port, () => {
     console.log(`Servidor de carga escuchando en http://localhost:${port}`);
