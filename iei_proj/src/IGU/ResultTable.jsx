@@ -2,8 +2,9 @@ import React from "react";
 import "../index.css";
 
 const ResultsTable = ({ results }) => {
-    const safeResults = Array.isArray(results) ? results : []; // Asegura que siempre sea un array
-    return (
+  console.log(results);
+  const data = results?.data || []; 
+  return (
       <div className="results-table">
         <h3>Resultados de la búsqueda:</h3>
         <table>
@@ -19,8 +20,8 @@ const ResultsTable = ({ results }) => {
             </tr>
           </thead>
           <tbody>
-            {safeResults.length > 0 ? (
-              safeResults.map((result, index) => (
+            {data.length > 0 ? (
+              data.map((result, index) => (
                 <tr key={index}>
                   <td>{result.nombre}</td>
                   <td>{result.tipo}</td>

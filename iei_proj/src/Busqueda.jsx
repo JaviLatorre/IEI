@@ -17,6 +17,7 @@ const Busqueda = () => {
   const handleSearch = async (filters) => {
     setLoading(true);
     setError(null);
+    //searchResults = [];
 
     try {
       // Construye los parámetros de consulta a partir de los filtros

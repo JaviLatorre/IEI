@@ -48,18 +48,22 @@ app.get('/search', async (req, res) =>{
             const { data: localidades, error: error2 } = await supabase
                 .from('Localidad')
                 .select('nombre')
-                .eq('en_provincia', provincia);
-            if (error2) {
+                .eq('en_provincia', consulta.provincia);
+            if (error2 || localidades.length === 0 || localidades == null) {
                 console.error('Error al buscar provincia: ', error2)
                 return res.status(500).json({
                     message: 'Error al buscar las provincias en la base de datos.',
                     error: error.message
                 });
             }
+            
             if (localidades && localidades.length > 0) {
+                console.log('ENTRANDO EN EL IF');
                 query = query.in('en_localidad', localidades.map((l) => l.nombre));
             }
         }
+
+        console.log(query);
 
         const { data, error } = await query;
         console.log(error)
@@ -74,19 +78,19 @@ app.get('/search', async (req, res) =>{
         }
         else {
             // Responder con éxito
-            respuestaAPI = data.map(elemento => ({
-                nombre: elemento.nombre,
-                tipo: elemento.tipo,
-                direccion: elemento.direccion,
-                localidad: elemento.en_localidad,
-                codPostal: elemento.codigo_postal,
-                //provincia: localidadToProvincia(elemento.en_localidad, res),
-                provincia: 'valencia',
-                descripcion: elemento.descripcion,
-                latitud: elemento.latitud,
-                longitud: elemento.longitud,
-
-            }))
+            const respuestaAPI = await Promise.all(
+                data.map(async (elemento) => ({
+                    nombre: elemento.nombre,
+                    tipo: elemento.tipo,
+                    direccion: elemento.direccion,
+                    localidad: elemento.en_localidad,
+                    codPostal: elemento.codigo_postal,
+                    provincia: await localidadToProvincia(elemento.en_localidad),
+                    descripcion: elemento.descripcion,
+                    latitud: elemento.latitud,
+                    longitud: elemento.longitud,
+                }))
+            );
             console.log(respuestaAPI[0])
             return res.status(200).json({
                 ok: true,
@@ -105,24 +109,18 @@ app.get('/search', async (req, res) =>{
     }
 })
 
-//  app.post('/search', async (req, res) =>{
-//      return res.status(200).json({
-//         message: 'Datos cargados correctamente.',
-//         data: respuestaAPI,
-//      });
-//  })
 
-// async function localidadToProvincia(localidad, res){
-//     const {data, error} = await supabase.from('Localidad').select('en_provincia').eq('nombre', localidad).single()
-//     if (error) {
-//         console.error('Error al buscar en Supabase: ', error);
-//             return res.status(500).json({
-//                 message: 'Error al buscar la provincia en la base de datos.',
-//                 error: error.message
-//             });
-//     }
-//     return data.en_provincia;
-// }
+
+ async function localidadToProvincia(localidad, res){
+    const {data, error} = await supabase.from('Localidad').select('en_provincia').eq('nombre', localidad).single()
+     if (error) {
+        console.error('Error al buscar en Supabase: ', error);
+             return res.status(500).json({
+                 message: 'Error al buscar la provincia en la base de datos.',
+                 error: error.message
+             });     }
+     return data.en_provincia;
+ }
 // Iniciar el servidor
 app.listen(port, () => {
     console.log(`Servidor de carga escuchando en http://localhost:${port}`);

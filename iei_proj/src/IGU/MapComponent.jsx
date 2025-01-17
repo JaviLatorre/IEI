@@ -6,7 +6,7 @@ import "../index.css"; // Asegúrate de tener este archivo para estilos adiciona
 const MapComponent = ({ results }) => {
   const mapRef = useRef(null); // Referencia para almacenar el mapa
   const markersRef = useRef([]); // Referencia para almacenar los marcadores
-  const safeResults = Array.isArray(results) ? results : [];
+  const data = results?.data || []; 
 
   useEffect(() => {
     if (!mapRef.current) {
@@ -41,7 +41,7 @@ const MapComponent = ({ results }) => {
     });
 
     // Agrega marcadores para cada resultado con coordenadas
-    safeResults.forEach((result) => {
+    data.forEach((result) => {
       if (result.latitud && result.longitud) {
         const marker = L.marker([result.latitud, result.longitud], { icon: customIcon })
           .addTo(mapRef.current)
@@ -49,7 +49,7 @@ const MapComponent = ({ results }) => {
         markersRef.current.push(marker);
       }
     });
-  }, [safeResults]);
+  }, [data]);
 
   return <div id="map" style={{ width: "1000px", height: "470px" }}></div>;
 };
