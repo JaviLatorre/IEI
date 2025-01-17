@@ -1,9 +1,9 @@
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 
-const { castillayleon, getInsertadasCorrectamenteCL, getModificadosCL, getDescartadosCL } = require('../Extractores/extractorCYL');
-const { euskadi, getInsertadasCorrectamenteEU, getModificadosEU, getDescartadosEU } = require('../Extractores/extractorEU');
-const { valencia, getInsertadasCorrectamenteVLC, getModificadosVLC, getDescartadosVLC } = require('../Extractores/extractorVLC');
+const { castillayleon, getInsertadasCorrectamenteCL, getModificadosCL, getDescartadosCL,registrosReparadosCYL,registrosRechazadosCYL } = require('../Extractores/extractorCYL');
+const { euskadi, getInsertadasCorrectamenteEU, getModificadosEU, getDescartadosEU, registrosReparadosEU, registrosRechazadosEU } = require('../Extractores/extractorEU');
+const { valencia, getInsertadasCorrectamenteVLC, getModificadosVLC, getDescartadosVLC ,registrosReparadosVLC, registrosRechazadosVLC} = require('../Extractores/extractorVLC');
 const { eliminarBD } = require('../Extractores/DAL');
 const { SUPABASE_URL, SUPABASE_KEY } = require('../credencialesSupaBase');
 
@@ -51,27 +51,49 @@ app.get('/api/extractores', async (req, res) => {
     }
 
     try {
-        let resultados = {
+        let resultadosEU = {
             registrosCargados: 0,
-            registrosReparados: [],
-            registrosRechazados: []
+            registrosReparadosEU: [],
+            registrosRechazadosEU: []
         };
 
         const combinarResultados = (nuevosResultados) => {
             resultados.registrosCargados += nuevosResultados.registrosCargados;
-            resultados.registrosReparados = resultados.registrosReparados.concat(nuevosResultados.registrosReparados);
-            resultados.registrosRechazados = resultados.registrosRechazados.concat(nuevosResultados.registrosRechazados);
+        
+            // Para Euskadi
+            if (nuevosResultados.registrosReparadosEU) {
+                resultadosEU.registrosReparados = resultadosEU.registrosReparados.concat(nuevosResultados.registrosReparadosEU);
+            }
+            if (nuevosResultados.registrosRechazadosEU) {
+                resultadosEU.registrosRechazados = resultadosEU.registrosRechazados.concat(nuevosResultados.registrosRechazadosEU);
+            }
+        
+            // Para Comunitat Valenciana
+            if (nuevosResultados.registrosReparadosVLC) {
+                resultados.registrosReparados = resultados.registrosReparados.concat(nuevosResultados.registrosReparadosVLC);
+            }
+            if (nuevosResultados.registrosRechazadosVLC) {
+                resultados.registrosRechazados = resultados.registrosRechazados.concat(nuevosResultados.registrosRechazadosVLC);
+            }
+        
+            // Para Castilla y León
+            if (nuevosResultados.registrosReparadosCYL) {
+                resultados.registrosReparados = resultados.registrosReparados.concat(nuevosResultados.registrosReparadosCYL);
+            }
+            if (nuevosResultados.registrosRechazadosCYL) {
+                resultados.registrosRechazados = resultados.registrosRechazados.concat(nuevosResultados.registrosRechazadosCYL);
+            }
         };
 
         // Acción según la fuente seleccionada
         switch (fuente.toLowerCase()) {
             case 'castilla y león':
                 console.log('Cargando datos desde Castilla y León...');
-                await castillayleon();
+                await euskadi();
                 combinarResultados({
-                    registrosCargados: getInsertadasCorrectamenteCL(),
-                    registrosReparados: getModificadosCL(),
-                    registrosRechazados: getDescartadosCL()
+                    registrosCargados: getInsertadasCorrectamenteCYL(),
+                    registrosReparados: registrosReparadosCYL,
+                    registrosRechazados: registrosRechazadosCYL,
                 });
                 break;
 
@@ -80,20 +102,20 @@ app.get('/api/extractores', async (req, res) => {
                 await euskadi();
                 combinarResultados({
                     registrosCargados: getInsertadasCorrectamenteEU(),
-                    registrosReparados: getModificadosEU(),
-                    registrosRechazados: getDescartadosEU()
+                    registrosReparados: registrosReparadosEU,
+                    registrosRechazados: registrosRechazadosEU,
                 });
                 break;
 
-            case 'comunitat valenciana':
-                console.log('Cargando datos desde Comunitat Valenciana...');
-                await valencia();
-                combinarResultados({
-                    registrosCargados: getInsertadasCorrectamenteVLC(),
-                    registrosReparados: getModificadosVLC(),
-                    registrosRechazados: getDescartadosVLC()
-                });
-                break;
+                case 'comunitat valenciana':
+                    console.log('Cargando datos desde Comunitat Valenciana...');
+                    await valencia();
+                    combinarResultados({
+                        registrosCargados: getInsertadasCorrectamenteVLC(),
+                        registrosReparados: registrosReparadosVLC,
+                        registrosRechazados: registrosRechazadosVLC,
+                    });
+                    break;
 
             case 'seleccionar todas':
                 console.log('Cargando datos de todas las fuentes...');
