@@ -22,7 +22,7 @@ async function extraerDatos(){
     
     try {
         // Consumir la API
-        const response = await fetch('http://localhost:3000/EuskadiAPI');
+        const response = await fetch('http://localhost:3008/EuskadiAPI');
         const data = await response.json();
         return data
     } catch (error) {
