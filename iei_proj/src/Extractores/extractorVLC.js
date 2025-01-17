@@ -97,7 +97,7 @@ async function guardarEnBD(monumento) {
         const longitud = coordenadas.longitud;
 
         if (!latitud || !longitud) {
-            registrarRechazo(monumento, "Coordenadas no disponibles");
+            registrarRechazo(monumento, "Error de selenium");
             return;
         }
 
