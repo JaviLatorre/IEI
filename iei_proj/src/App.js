@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 import Busqueda from "./Busqueda";
 import DataLoad from "./DataLoad";
 import "./App.css"; // Importar estilos
 
 function App() {
-  const [activePage, setActivePage] = useState("search");
+  const [activePage, setActivePage] = useState("search"); // Estado inicial "search"
   const navigate = useNavigate();
 
   const togglePage = () => {
@@ -30,6 +30,8 @@ function App() {
 
       {/* Define las rutas */}
       <Routes>
+        {/* Redirige la ruta base ("/") a "search" */}
+        <Route path="/" element={<Navigate to="/search" />} />
         <Route path="/search" element={<Busqueda />} />
         <Route path="/data-load" element={<DataLoad />} />
       </Routes>
