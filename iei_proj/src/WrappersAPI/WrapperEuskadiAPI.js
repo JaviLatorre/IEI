@@ -4,7 +4,7 @@ const path = require('path');
 
 const app = express();
 //app.use(express.json());
-const port = 3000;
+const port = 3008;
 
 // Instancia del wrapper con el archivo JSON
 const wrapper = new WrapperEuskadi('../FuentesDeDatos/edificios_EntregaFinal.json');
