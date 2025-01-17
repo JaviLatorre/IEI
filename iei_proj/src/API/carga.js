@@ -1,7 +1,7 @@
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 
-const { castillayleon, getInsertadasCorrectamenteCL, getModificadosCL, getDescartadosCL,registrosReparadosCYL,registrosRechazadosCYL } = require('../Extractores/extractorCYL');
+const { castillayleon, getInsertadasCorrectamenteCYL, getModificadosCYL, getDescartadosCYL,registrosReparadosCYL,registrosRechazadosCYL } = require('../Extractores/extractorCYL');
 const { euskadi, getInsertadasCorrectamenteEU, getModificadosEU, getDescartadosEU, registrosReparadosEU, registrosRechazadosEU } = require('../Extractores/extractorEU');
 const { valencia, getInsertadasCorrectamenteVLC, getModificadosVLC, getDescartadosVLC ,registrosReparadosVLC, registrosRechazadosVLC} = require('../Extractores/extractorVLC');
 const { eliminarBD } = require('../Extractores/DAL');
@@ -51,38 +51,16 @@ app.get('/api/extractores', async (req, res) => {
     }
 
     try {
-        let resultadosEU = {
+        let resultados = {
             registrosCargados: 0,
-            registrosReparadosEU: [],
-            registrosRechazadosEU: []
+            registrosReparados: [],
+            registrosRechazados: []
         };
 
         const combinarResultados = (nuevosResultados) => {
-            resultados.registrosCargados += nuevosResultados.registrosCargados;
-        
-            // Para Euskadi
-            if (nuevosResultados.registrosReparadosEU) {
-                resultadosEU.registrosReparados = resultadosEU.registrosReparados.concat(nuevosResultados.registrosReparadosEU);
-            }
-            if (nuevosResultados.registrosRechazadosEU) {
-                resultadosEU.registrosRechazados = resultadosEU.registrosRechazados.concat(nuevosResultados.registrosRechazadosEU);
-            }
-        
-            // Para Comunitat Valenciana
-            if (nuevosResultados.registrosReparadosVLC) {
-                resultados.registrosReparados = resultados.registrosReparados.concat(nuevosResultados.registrosReparadosVLC);
-            }
-            if (nuevosResultados.registrosRechazadosVLC) {
-                resultados.registrosRechazados = resultados.registrosRechazados.concat(nuevosResultados.registrosRechazadosVLC);
-            }
-        
-            // Para Castilla y León
-            if (nuevosResultados.registrosReparadosCYL) {
-                resultados.registrosReparados = resultados.registrosReparados.concat(nuevosResultados.registrosReparadosCYL);
-            }
-            if (nuevosResultados.registrosRechazadosCYL) {
-                resultados.registrosRechazados = resultados.registrosRechazados.concat(nuevosResultados.registrosRechazadosCYL);
-            }
+            resultados.registrosCargados += nuevosResultados.registrosCargados || 0;
+            resultados.registrosReparados = resultados.registrosReparados.concat(nuevosResultados.registrosReparados || []);
+            resultados.registrosRechazados = resultados.registrosRechazados.concat(nuevosResultados.registrosRechazados || []);
         };
 
         // Acción según la fuente seleccionada
@@ -121,9 +99,9 @@ app.get('/api/extractores', async (req, res) => {
                 console.log('Cargando datos de todas las fuentes...');
                 await castillayleon();
                 combinarResultados({
-                    registrosCargados: getInsertadasCorrectamenteCL(),
-                    registrosReparados: getModificadosCL(),
-                    registrosRechazados: getDescartadosCL()
+                    registrosCargados: getInsertadasCorrectamenteCYL(),
+                    registrosReparados: getModificadosCYL(),
+                    registrosRechazados: getDescartadosCYL()
                 });
                 await euskadi();
                 combinarResultados({

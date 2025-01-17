@@ -156,11 +156,11 @@ function getInsertadasCorrectamenteCYL() {
     return insertadas_correctamente;
 }
 
-function getModificados() {
+function getModificadosCYL() {
     return insertadas_corregidas;
 }
 
-function getDescartados() {
+function getDescartadosCYL() {
     return descartadas;
 }
 
@@ -168,8 +168,8 @@ function getDescartados() {
 module.exports = {
     castillayleon,
     getInsertadasCorrectamenteCYL,
-    getModificados,
-    getDescartados,
+    getModificadosCYL,
+    getDescartadosCYL,
     registrosReparadosCYL,
     registrosRechazadosCYL,
 };
