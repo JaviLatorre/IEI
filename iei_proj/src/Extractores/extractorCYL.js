@@ -1,252 +1,175 @@
-// fuente de datos monumentos
 const { SUPABASE_URL, SUPABASE_KEY } = require('../credencialesSupaBase');
 const { createClient } = require('@supabase/supabase-js');
-
-const fs = require('fs').promises;  // Usamos la versión Promesa de 'fs' para trabajar con async/await
-const path = require('path');
 
 let insertadas_correctamente = 0;
 let insertadas_corregidas = 0;
 let descartadas = 0;
 let modificado = false;
-let nombresProcesados = [];
-let motivosDescarte = [];
+
+let registrosReparadosCYL = [];
+let registrosRechazadosCYL = [];
 
 let provincia = "";
 
-// Función para consumir la API y devolver el archivo de datos en JSON
-async function extraerDatos(){
-  const fetch = (await import('node-fetch')).default //Usamos una importación dinámica para este módulo porque es un modulo ESM y el proyecto usa CommonJS, así 
-                                                      //lo podemos importar y no se queja.
-  
-  try {
-      // Consumir la API
-      const response = await fetch('http://localhost:3002/CyLAPI');
-      const data = await response.json();
-      return data
-  } catch (error) {
-      console.error('Error extrayendo y guardando datos:', error);
-  } 
+// Función para consumir la API y devolver los datos en JSON
+async function extraerDatos() {
+    const fetch = (await import('node-fetch')).default;
+    try {
+        const response = await fetch('http://localhost:3002/CYLAPI'); // Cambia la URL según corresponda
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error extrayendo datos:', error);
+    }
 }
 
-// Función principal para procesar el archivo JSON
+// Función principal
 async function castillayleon() {
-  try {
-    console.log("goadfa")
-    const data = await extraerDatos()
-    console.log(JSON.stringify(data, null, 2))
+    registrosReparadosCYL.length = 0;
+    registrosRechazadosCYL.length = 0;
 
-    const monumentos = data?.monumentos?.monumento || [];
+    try {
+        const data = await extraerDatos();
 
-    console.time('Tiempo de ejecución');
+        for (const monumento of data) {
+            modificado = false;
+            await guardarEnBD(monumento);
+        }
 
-    // Procesar cada monumento
-    for (const monumento of monumentos) {
-      await guardarEnBD(monumento);
+        console.log('Todos los monumentos han sido procesados.');
+        console.log('Monumentos insertados correctamente:', insertadas_correctamente);
+        console.log('Monumentos corregidos:', insertadas_corregidas);
+        console.log('Monumentos descartados:', descartadas);
+    } catch (err) {
+        console.error('Error procesando los monumentos:', err);
     }
-
-    console.timeEnd('Tiempo de ejecución');
-    console.log(`Número de monumentos procesados: ${monumentos.length}`);
-    console.log('Monumentos insertados correctamente:', insertadas_correctamente);
-    console.log('Monumentos corregidos:', insertadas_corregidas);
-    console.log('Monumentos descartados:', descartadas);
-    console.log('Motivos de descarte:', motivosDescarte);
-  } catch (err) {
-    console.error('Error procesando el archivo JSON:', err);
-  }
 }
 
-// Función para guardar el monumento en la base de datos
+// Función para guardar en la base de datos
 async function guardarEnBD(monumento) {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  provincia = monumento.poblacion.provincia;
-  let municipio = monumento.poblacion.municipio;
-  const nombreMonumento = monumento.nombre;
-  let longitudFinal = monumento.coordenadas.longitud;
-  const latitud = monumento.coordenadas.latitud;
-  const codigoPostal = monumento.codigoPostal;
-  modificado = false;
+    try {
+        provincia = monumento.provincia;
 
-  // Verificar datos
-  //if (!(await verificarProvincia())) return;
-  if (!(await verificarMunicipio(municipio))) return;
-  if (!(await verificarMonumento(monumento, longitudFinal, latitud, codigoPostal, nombreMonumento, municipio))) return;
+        let correcto = await verificarProvincia();
+        if (!correcto) {
+            registrarRechazo(monumento, "Provincia no válida");
+            return;
+        }
 
-  const codiPostalValidado = validarCodigoPostal(codigoPostal, provincia);
-  if (!codiPostalValidado) return;
-    console.log(codiPostalValidado)
+        municipio = monumento.municipio;
+        correcto = await verificarMunicipio();
+        if (!correcto) {
+            registrarRechazo(monumento, "Municipio no válido");
+            return;
+        }
 
-  if (modificado) insertadas_corregidas++;
-  else insertadas_correctamente++;
+        const nombreMonumento = monumento.nombre;
+        const descripcionMonumento = monumento.descripcion;
 
-  try {
-    // Insertar provincia
-    await supabase.from('Provincia').upsert([{ nombre: provincia }]);
+        if (!nombreMonumento || !descripcionMonumento) {
+            registrarRechazo(monumento, "Datos del monumento incompletos");
+            return;
+        }
 
-    // Insertar municipio
-    await supabase.from('Localidad').upsert([{ nombre: municipio, en_provincia: provincia }]);
+        // Guardar en la base de datos
+        await supabase.from('Provincia').insert([{ nombre: provincia }]);
+        await supabase.from('Localidad').insert([{ nombre: municipio, en_provincia: provincia }]);
+        await supabase.from('Monumento').insert([{
+            nombre: nombreMonumento,
+            tipo: determinarTipo(nombreMonumento),
+            direccion: monumento.direccion || 'Dirección no disponible',
+            descripcion: descripcionMonumento,
+            latitud: monumento.latitud,
+            longitud: monumento.longitud,
+            codigo_postal: monumento.codigo_postal || 'Código postal no disponible',
+            en_localidad: municipio,
+        }]);
 
-    // Insertar monumento
-    const { error } = await supabase.from('Monumento').insert([
-      {
-        nombre: nombreMonumento,
-        tipo: determinarTipo(monumento.tipoMonumento),
-        direccion: determinarDireccion(monumento.calle),
-        descripcion: limpiarDescripcion(monumento.Descripcion),
-        latitud: latitud,
-        longitud: longitudFinal,
-        codigo_postal: codiPostalValidado,
-        en_localidad: municipio,
-      },
-    ]);
-
-    if (error) {
-      console.error('Error al insertar el monumento:', error.message);
-    } else {
-      nombresProcesados.push(nombreMonumento);
+        if (modificado) {
+            registrarReparacion(monumento, "Datos corregidos");
+            insertadas_corregidas++;
+        } else {
+            insertadas_correctamente++;
+        }
+    } catch (err) {
+        console.error('Error guardando en BD:', err);
+        registrarRechazo(monumento, "Error al guardar en la base de datos");
+        descartadas++;
     }
-  } catch (err) {
-    console.error('Error guardando en BD:', err);
-  }
 }
 
-// Función para normalizar texto (sin acentos y en mayúsculas)
-function normalizarTexto(texto) {
-  if (!texto) return '';
-  return texto.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+// Funciones auxiliares de validación
+async function verificarProvincia() {
+    if (!provincia) {
+        descartadas++;
+        return false;
+    }
+    const provinciasValidas = ["Ávila", "Burgos", "León", "Palencia", "Salamanca", "Segovia", "Soria", "Valladolid", "Zamora"];
+    if (!provinciasValidas.includes(provincia)) {
+        descartadas++;
+        return false;
+    }
+    return true;
+}
+
+async function verificarMunicipio() {
+    if (!municipio) {
+        descartadas++;
+        return false;
+    }
+    return true;
 }
 
 // Función para determinar el tipo de monumento
 function determinarTipo(denominacion) {
-  const lowername = denominacion.toLowerCase();
-
-  if (lowername.includes('yacimiento')) return 'Yacimiento Arqueológico';
-  if (lowername.includes('iglesia') || lowername.includes('ermita') || lowername.includes('catedral') || lowername.includes('sinagoga')) return 'Iglesia-Ermita';
-  if (lowername.includes('monasterio') || lowername.includes('convento') || lowername.includes('santuario')) return 'Monasterio-Convento';
-  if (lowername.includes('castillo') || lowername.includes('palacio') || lowername.includes('torre') || lowername.includes('muralla') || lowername.includes('puerta')) return 'Castillo-Fortaleza-Torre';
-  if (lowername.includes('puente')) return 'Puente';
-  return 'Otros';
+    const lowername = denominacion.toLowerCase();
+    if (lowername.includes('iglesia') || lowername.includes('ermita')) return 'Iglesia-Ermita';
+    if (lowername.includes('monasterio') || lowername.includes('convento')) return 'Monasterio-Convento';
+    if (lowername.includes('castillo') || lowername.includes('fortaleza') || lowername.includes('torre')) return 'Castillo-Fortaleza-Torre';
+    if (lowername.includes('palacio') || lowername.includes('casa')) return 'Edificio singular';
+    return 'Otros';
 }
 
-// Función para determinar la dirección
-function determinarDireccion(calle) {
-  if (!calle) return 'Dirección no disponible';
-  return calle;
+// Funciones para registrar reparaciones y rechazos
+function registrarReparacion(monumento, motivo) {
+    registrosReparadosCYL.push({
+        fuente: "Castilla y León",
+        nombre: monumento.nombre,
+        localidad: municipio,
+        motivoError: motivo,
+    });
 }
 
-// Función para limpiar descripciones
-function limpiarDescripcion(texto) {
-  return texto ? texto.replace(/<p[^>]*>/g, '').replace(/<\/p>/g, '') : '';
+function registrarRechazo(monumento, motivo) {
+    registrosRechazadosCYL.push({
+        fuente: "Castilla y León",
+        nombre: monumento.nombre,
+        localidad: municipio,
+        motivoError: motivo,
+    });
 }
 
-// Función para validar el código postal
-function validarCodigoPostal(codigoPostal, provincia) {
-  if (!codigoPostal) {
-    motivosDescarte.push('Código postal no disponible');
-    descartadas++;
-    return false;
-  }
-
-  codigoPostal = codigoPostal.toString().trim();
-
-  if ((provincia === "Ávila" || provincia === "Burgos") && codigoPostal.length === 4) {
-    modificado = true;
-    return "0" + codigoPostal;
-  }
-
-  if ((provincia === "León" && !codigoPostal.startsWith("24")) || (provincia === "Palencia" && !codigoPostal.startsWith("34")) 
-    || (provincia === "Salamanca" && !codigoPostal.startsWith("37")) || (provincia === "Segovia" && !codigoPostal.startsWith("40"))
-    || (provincia === "Soria" && !codigoPostal.startsWith("42")) || (provincia === "Valladolid" && !codigoPostal.startsWith("47"))
-    || (provincia === "Zamora" && !codigoPostal.startsWith("49")) || (provincia === "Ávila" && !codigoPostal.startsWith("04"))
-    || (provincia === "Burgos" && !codigoPostal.startsWith("09"))
-  ) {
-    motivosDescarte.push(`Código postal inválido: ${codigoPostal}`);
-    descartadas++;
-    return false;
-  }
-
-  if (codigoPostal.length !== 5 || !/^\d{5}$/.test(codigoPostal)) {
-    motivosDescarte.push(`Código postal inválido: ${codigoPostal}`);
-    descartadas++;
-    return false;
-  }
-
-  return codigoPostal;
-}
-
-// Función para verificar la provincia
-async function verificarProvincia() {
-  const provinciasValidas = ["LEÓN", "PALENCIA", "BURGOS", "ZAMORA", "VALLADOLID", "SORIA", "SEGOVIA", "SALAMANCA", "ÁVILA"];
-
-  if (!provinciasValidas.includes(provincia)) {
-    motivosDescarte.push(`Provincia inválida: ${provincia}`);
-    descartadas++;
-    return false;
-  }
-  return true;
-}
-
-// Función para verificar el municipio
-async function verificarMunicipio(municipio) {
-  if (!municipio) {
-    motivosDescarte.push('Municipio no disponible');
-    descartadas++;
-    return false;
-  }
-
-  if (municipio.includes('/')) {
-    municipio = municipio.split('/')[0];
-    modificado = true;
-  }
-
-  return true;
-}
-
-// Función para verificar el monumento
-async function verificarMonumento(monumento, longitud, latitud, codigoPostal, nombreMonumento, municipio) {
-  if (!monumento) {
-    motivosDescarte.push('Monumento nulo');
-    descartadas++;
-    return false;
-  }
-
-  if (!latitud || !longitud) {
-    motivosDescarte.push('Coordenadas incompletas');
-    descartadas++;
-    return false;
-  }
-
-  if (!/^[0-9.-]+$/.test(longitud)) {
-    motivosDescarte.push(`Longitud inválida: ${longitud}`);
-    modificado = true;
-  }
-
-  if (!codigoPostal) {
-    motivosDescarte.push('Código postal no disponible');
-    descartadas++;
-    return false;
-  }
-
-  if (nombresProcesados.includes(nombreMonumento)) {
-    motivosDescarte.push(`Monumento duplicado: ${nombreMonumento}`);
-    descartadas++;
-    return false;
-  }
-
-  return true;
-}
-
-function getInsertadasCorrectamenteCL() {
+// Funciones para obtener datos
+function getInsertadasCorrectamenteCYL() {
     return insertadas_correctamente;
 }
 
-function getModificadosCL() {
+function getModificados() {
     return insertadas_corregidas;
 }
 
-function getDescartadosCL() {
+function getDescartados() {
     return descartadas;
 }
 
-module.exports = { castillayleon, getInsertadasCorrectamenteCL, getModificadosCL, getDescartadosCL };
+// Exportar funciones
+module.exports = {
+    castillayleon,
+    getInsertadasCorrectamenteCYL,
+    getModificados,
+    getDescartados,
+    registrosReparadosCYL,
+    registrosRechazadosCYL,
+};
