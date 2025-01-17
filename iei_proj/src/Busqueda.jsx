@@ -4,38 +4,31 @@ import MapComponent from "./IGU/MapComponent";
 import ResultsTable from "./IGU/ResultTable";
 import "./index.css";
 
-// const cors = require('cors');
-// app.use(cors({
-//     origin: 'http://localhost:3000', // Dominio del cliente
-// }));
-
 const Busqueda = () => {
+  const initialFilters = { campo1: "", campo2: "" }; // Estado inicial del formulario
+
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [filters, setFilters] = useState(initialFilters); // Almacena los valores del formulario
 
   const handleSearch = async (filters) => {
     setLoading(true);
     setError(null);
-    //searchResults = [];
 
     try {
-      // Construye los parámetros de consulta a partir de los filtros
       const queryParams = new URLSearchParams(filters).toString();
-
       console.log(queryParams);
 
-      // Realiza la petición a la API (reemplaza la URL con tu endpoint real)
       const response = await fetch(`http://localhost:3005/search?${queryParams}`);
-       if (!response.ok) {
-         throw new Error(`Error en la API: ${response.statusText}`);
-       }
+      if (!response.ok) {
+        throw new Error(`Error en la API: ${response.statusText}`);
+      }
 
       const data = await response.json();
-      console.log('Respuesta de la API: ',data)
-      // Actualiza los resultados con los datos obtenidos de la API
-      setSearchResults(data);
+      console.log("Respuesta de la API: ", data);
 
+      setSearchResults(data);
     } catch (err) {
       console.error("Error al realizar la búsqueda:", err);
       setError("No se pudo realizar la búsqueda. Intenta nuevamente.");
@@ -44,16 +37,26 @@ const Busqueda = () => {
     }
   };
 
-  
+  const handleCancel = () => {
+    setSearchResults([]); // Vacía los resultados de búsqueda
+    setError(null); // Limpia el mensaje de error
+    setLoading(false); // Detiene cualquier estado de carga
+    setFilters(initialFilters); // Restaura los filtros a su estado inicial
+  };
 
   return (
     <div className="container">
       <div className="top-section">
-        {/* Pasa handleSearch a SearchForm */}
-        <SearchForm onSearch={handleSearch} />
+        {/* Pasa filtros, handleSearch y handleCancel al formulario */}
+        <SearchForm
+          onSearch={handleSearch}
+          onCancel={handleCancel}
+          filters={filters}
+          setFilters={setFilters}
+        />
         <MapComponent results={searchResults} />
       </div>
-      {/* Pasa searchResults a ResultsTable */}
+      {error && <div className="error-message">{error}</div>}
       <ResultsTable results={searchResults} />
     </div>
   );
