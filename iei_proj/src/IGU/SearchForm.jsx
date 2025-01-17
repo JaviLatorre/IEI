@@ -68,6 +68,7 @@ const SearchForm = ({ onSearch, onCancel }) => {
         <option value="Edificio Singular">Edificio Singular</option>
         <option value="Puente">Puente</option>
         <option value="Otros">Otros</option>
+        <option value="">Todos</option>
       </select>
       <div>
         <button type="button" className="cancel-button" onClick={handleCancel}>

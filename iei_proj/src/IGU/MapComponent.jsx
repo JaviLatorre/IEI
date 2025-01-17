@@ -1,18 +1,54 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../index.css"; // Asegúrate de tener este archivo para estilos adicionales si es necesario
 
-const MapComponent = ({ results }) => {
+const MapComponent = () => {
   const mapRef = useRef(null); // Referencia para almacenar el mapa
   const markersRef = useRef([]); // Referencia para almacenar los marcadores
-  const data = results?.data || []; 
-  console.log(data);
+  const results = [];
+  const [mapResults, setMapResults] = useState([]);
+  const data = mapResults?.data || []; 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const initialFilters = { campo1: "", campo2: "" };
+  const [filters, setFilters] = useState(initialFilters);
 
   useEffect(() => {
+    
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+  
+      try {
+        const queryParams = new URLSearchParams(filters).toString();
+     
+  
+        const response = await fetch(`http://localhost:3005/mapa?${queryParams}`);
+        if (!response.ok) {
+          throw new Error(`Error en la API: ${response.statusText}`);
+        }
+  
+        const data = await response.json();
+       
+  
+        setMapResults(data);
+      } catch (err) {
+        console.error("Error al realizar la búsqueda:", err);
+        setError("No se pudo realizar la búsqueda. Intenta nuevamente.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    
+    
+    
     if (!mapRef.current) {
       // Inicializa el mapa solo si aún no ha sido creado
       mapRef.current = L.map("map").setView([40.416775, -3.703790], 5); // Centro de España
+
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
